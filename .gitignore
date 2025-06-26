@@ -33,3 +33,5 @@
 
 Build
 *.zip
+
+.DS_Store
