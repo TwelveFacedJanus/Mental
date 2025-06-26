@@ -15,5 +15,5 @@
 mkdir Build && cd Build && cmake .. && make
 ```
 
-# Testet on:
+# Tested on:
 - Macbook Air M2 Sequoia 15.5 with brew installed dependencies.
