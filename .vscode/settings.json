@@ -57,6 +57,7 @@
         "ratio": "cpp",
         "span": "cpp",
         "stack": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "filesystem": "cpp"
     }
 }

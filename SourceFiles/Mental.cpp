@@ -161,6 +161,7 @@ void MentalWindow::main_loop() {
     camera.set_position(0.0f, 0.0f, 3.0f);
     camera.look_at(0.0f, 0.0f, 0.0f);
     g_active_camera = &camera;
+    g_lua_components.push_back(&camera);
 
     // ===== FBO INIT =====
     create_viewport_fbo(viewport_width, viewport_height);

@@ -61,4 +61,5 @@ public:
     std::string selected_file_path;
     const std::string& get_selected_file_path() const { return selected_file_path; }
     void set_selected_file_path(const std::string& path) { selected_file_path = path; }
+    void set_custom_imgui_style();
 };

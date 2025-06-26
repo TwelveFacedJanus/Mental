@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.11)
-project(Mental LANGUAGES CXX VERSION 1.0.0)
+project(Mental LANGUAGES C CXX VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
+enable_language(C)
 set(SFD SourceFiles)
 set(HFD HeaderFiles)
 set(EXECUTABLE ${SFD}/main.cpp
@@ -49,9 +49,22 @@ set(TEXTEDITOR_SOURCES
 )
 include_directories(${TEXTEDITOR_DIR})
 
+# Native File Dialog (NFD)
+set(NFD_DIR "External/nativefiledialog/src")
+set(NFD_SOURCES
+    # nfd_common.c не добавляем сюда!
+)
+include_directories(${NFD_DIR}/include)
+
 include_directories(${GLFW_INCLUDE_DIR} ${GLEW_INCLUDE_DIR} ${HFD} ${LUA_INCLUDE_DIR})
 
-add_executable(${PROJECT_NAME} ${EXECUTABLE} ${IMGUI_SOURCES} ${TEXTEDITOR_SOURCES})
+enable_language(OBJC)
+
+add_executable(${PROJECT_NAME} ${EXECUTABLE} ${IMGUI_SOURCES} ${TEXTEDITOR_SOURCES} ${NFD_SOURCES})
+
+set_source_files_properties(${NFD_DIR}/nfd_common.c PROPERTIES LANGUAGE C)
+set_source_files_properties(${NFD_DIR}/nfd_cocoa.m PROPERTIES LANGUAGE OBJC)
+target_sources(${PROJECT_NAME} PRIVATE ${NFD_DIR}/nfd_common.c ${NFD_DIR}/nfd_cocoa.m)
 
 target_link_libraries(${PROJECT_NAME} ${GLFW_LIBRARY} ${GLEW_LIBRARY} "-framework OpenGL" "-framework Cocoa" "-framework IOKit" "-framework CoreVideo" ${LUA_LIBRARY})
 

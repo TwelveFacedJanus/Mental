@@ -2,16 +2,62 @@
 #include "Ui.hpp"
 #include "Component.hpp"
 #include <filesystem>
+#include "../External/nativefiledialog/src/include/nfd.h"
+
+void UI::set_custom_imgui_style() {
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowRounding = 6.0f;
+    style.FrameRounding = 4.0f;
+    style.ScrollbarRounding = 8.0f;
+    style.GrabRounding = 4.0f;
+    style.TabRounding = 4.0f;
+    style.WindowBorderSize = 1.0f;
+    style.FrameBorderSize = 1.0f;
+    style.PopupRounding = 4.0f;
+    style.ChildRounding = 4.0f;
+    style.Colors[ImGuiCol_WindowBg]           = ImVec4(0.13f, 0.14f, 0.17f, 1.00f);
+    style.Colors[ImGuiCol_Header]             = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+    style.Colors[ImGuiCol_HeaderHovered]      = ImVec4(0.30f, 0.32f, 0.37f, 1.00f);
+    style.Colors[ImGuiCol_HeaderActive]       = ImVec4(0.25f, 0.27f, 0.32f, 1.00f);
+    style.Colors[ImGuiCol_Button]             = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+    style.Colors[ImGuiCol_ButtonHovered]      = ImVec4(0.30f, 0.32f, 0.37f, 1.00f);
+    style.Colors[ImGuiCol_ButtonActive]       = ImVec4(0.25f, 0.27f, 0.32f, 1.00f);
+    style.Colors[ImGuiCol_FrameBg]            = ImVec4(0.16f, 0.17f, 0.20f, 1.00f);
+    style.Colors[ImGuiCol_FrameBgHovered]     = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+    style.Colors[ImGuiCol_FrameBgActive]      = ImVec4(0.25f, 0.27f, 0.32f, 1.00f);
+    style.Colors[ImGuiCol_TitleBg]            = ImVec4(0.10f, 0.11f, 0.13f, 1.00f);
+    style.Colors[ImGuiCol_TitleBgActive]      = ImVec4(0.13f, 0.14f, 0.17f, 1.00f);
+    style.Colors[ImGuiCol_MenuBarBg]          = ImVec4(0.16f, 0.17f, 0.20f, 1.00f);
+    style.Colors[ImGuiCol_Tab]                = ImVec4(0.13f, 0.14f, 0.17f, 1.00f);
+    style.Colors[ImGuiCol_TabHovered]         = ImVec4(0.30f, 0.32f, 0.37f, 1.00f);
+    style.Colors[ImGuiCol_TabActive]          = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+    style.Colors[ImGuiCol_TabUnfocused]       = ImVec4(0.13f, 0.14f, 0.17f, 1.00f);
+    style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.16f, 0.17f, 0.20f, 1.00f);
+    style.Colors[ImGuiCol_CheckMark]          = ImVec4(0.30f, 0.32f, 0.37f, 1.00f);
+    style.Colors[ImGuiCol_SliderGrab]         = ImVec4(0.30f, 0.32f, 0.37f, 1.00f);
+    style.Colors[ImGuiCol_SliderGrabActive]   = ImVec4(0.25f, 0.27f, 0.32f, 1.00f);
+    style.Colors[ImGuiCol_ResizeGrip]         = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+    style.Colors[ImGuiCol_ResizeGripHovered]  = ImVec4(0.30f, 0.32f, 0.37f, 1.00f);
+    style.Colors[ImGuiCol_ResizeGripActive]   = ImVec4(0.25f, 0.27f, 0.32f, 1.00f);
+    style.Colors[ImGuiCol_Separator]          = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+    style.Colors[ImGuiCol_SeparatorHovered]   = ImVec4(0.30f, 0.32f, 0.37f, 1.00f);
+    style.Colors[ImGuiCol_SeparatorActive]    = ImVec4(0.25f, 0.27f, 0.32f, 1.00f);
+    style.Colors[ImGuiCol_Text]               = ImVec4(0.86f, 0.93f, 0.89f, 1.00f);
+    style.Colors[ImGuiCol_TextDisabled]       = ImVec4(0.50f, 0.54f, 0.58f, 1.00f);
+    style.Colors[ImGuiCol_Border]             = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+}
 
 void UI::initialize_imgui(GLFWwindow* window) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    
+    io.IniFilename = "../imgui.ini";
+    io.Fonts->AddFontFromFileTTF("../Fonts/SFProText-Medium.ttf", 14.0f);
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     ImGui::StyleColorsDark();
+    set_custom_imgui_style();
     ImGuiStyle& style = ImGui::GetStyle();
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
     {
@@ -31,27 +77,39 @@ void UI::create_new_frame() {
 void UI::show_all_components() {
     // === IMGUI: All Components Widget ===
     if (ImGui::Begin("All Components")) {
-        // --- Кнопки создания компонентов ---
-        if (ImGui::Button("Add Sprite2D")) {
-            auto* sprite = new Sprite2D();
-            window->addSprite2D(sprite, 0.0f, 0.0f, 0.0f, "", default_view, default_projection, delta);
+        // --- Кнопка добавления компонента с выбором типа ---
+        static int selected_type = 0;
+        static const char* types[] = {"Sprite2D", "Triangle", "AnimatedSprite2D", "TileMap", "Camera"};
+        if (ImGui::Button("Добавить компонент")) {
+            ImGui::OpenPopup("component_type_popup");
         }
-        ImGui::SameLine();
-        if (ImGui::Button("Add Triangle")) {
-            auto* tri = new Triangle();
-            window->addTriangle(tri, default_view, default_projection, delta);
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Add AnimatedSprite2D")) {
-            auto* anim = new AnimatedSprite2D(4, 4, 0.1f);
-            window->addSprite2D(anim, 0.0f, 0.0f, 0.0f, "", default_view, default_projection, delta);
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Add TileMap")) {
-            auto* tilemap = new TileMap();
-            tilemap->setMap(8, 8, std::vector<int>(64, 0));
-            tilemap->setShader();
-            g_lua_components.push_back(tilemap);
+        if (ImGui::BeginPopup("component_type_popup")) {
+            for (int i = 0; i < IM_ARRAYSIZE(types); ++i) {
+                if (ImGui::Selectable(types[i], selected_type == i)) {
+                    selected_type = i;
+                    // Создание компонента по выбору
+                    if (selected_type == 0) { // Sprite2D
+                        auto* sprite = new Sprite2D();
+                        window->addSprite2D(sprite, 0.0f, 0.0f, 0.0f, "", default_view, default_projection, delta);
+                    } else if (selected_type == 1) { // Triangle
+                        auto* tri = new Triangle();
+                        window->addTriangle(tri, default_view, default_projection, delta);
+                    } else if (selected_type == 2) { // AnimatedSprite2D
+                        auto* anim = new AnimatedSprite2D(4, 4, 0.1f);
+                        window->addSprite2D(anim, 0.0f, 0.0f, 0.0f, "", default_view, default_projection, delta);
+                    } else if (selected_type == 3) { // TileMap
+                        auto* tilemap = new TileMap();
+                        tilemap->setMap(8, 8, std::vector<int>(64, 0));
+                        tilemap->setShader();
+                        g_lua_components.push_back(tilemap);
+                    } else if (selected_type == 4) { // Camera
+                        auto* cam = new Camera();
+                        g_lua_components.push_back(cam);
+                    }
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            ImGui::EndPopup();
         }
         for (size_t i = 0; i < g_lua_components.size(); ++i) {
             Component* comp = g_lua_components[i];
@@ -95,8 +153,17 @@ void UI::show_all_components() {
                     ImGui::InputFloat(("Frame Duration##" + std::to_string(i)).c_str(), &anim->frame_duration);
                     char buf[256];
                     strncpy(buf, anim->tileset_path.c_str(), sizeof(buf));
-                    if (ImGui::InputText(("Tileset Path##" + std::to_string(i)).c_str(), buf, sizeof(buf))) {
-                        anim->tileset_path = buf;
+                    ImGui::InputText(("Tileset Path##" + std::to_string(i)).c_str(), buf, sizeof(buf));
+                    ImGui::SameLine();
+                    if (ImGui::Button(("Выбрать тайлсет##" + std::to_string(i)).c_str())) {
+                        nfdchar_t *outPath = NULL;
+                        nfdresult_t result = NFD_OpenDialog("png,jpg,jpeg,bmp,tga", NULL, &outPath);
+                        if (result == NFD_OKAY && outPath) {
+                            strncpy(buf, outPath, sizeof(buf));
+                            buf[sizeof(buf)-1] = '\0';
+                            anim->tileset_path = buf;
+                            free(outPath);
+                        }
                     }
                     if (ImGui::Button(("Load Tileset##" + std::to_string(i)).c_str())) {
                         int w=0,h=0,channels=0;
@@ -261,7 +328,7 @@ void UI::show_script_editor() {
             if (script_edit_path.empty()) {
                 ImGui::InputText("New Script Path", new_script_path_buf, sizeof(new_script_path_buf));
             }
-            editor.Render("EditorChild", ImVec2(600, 400));
+            editor.Render("EditorChild");
             if (ImGui::Button("Save & Reload")) {
                 save_requested = true;
             }
@@ -310,11 +377,21 @@ void UI::show_script_editor() {
 
 void UI::show_tilesheet_cutter() {
     if (ImGui::Begin("Tilesheet Cutter")) {
-        ImGui::InputText("Tilesheet Path", tilesheet_path, sizeof(tilesheet_path));
         ImGui::InputInt("Rows", &tilesheet_rows);
         ImGui::InputInt("Columns", &tilesheet_cols);
         tilesheet_rows = std::max(1, tilesheet_rows);
         tilesheet_cols = std::max(1, tilesheet_cols);
+        ImGui::InputText("Tilesheet Path", tilesheet_path, sizeof(tilesheet_path));
+        ImGui::SameLine();
+        if (ImGui::Button("Выбрать тайлсет")) {
+            nfdchar_t *outPath = NULL;
+            nfdresult_t result = NFD_OpenDialog("png,jpg,jpeg,bmp,tga", NULL, &outPath);
+            if (result == NFD_OKAY && outPath) {
+                strncpy(tilesheet_path, outPath, sizeof(tilesheet_path));
+                tilesheet_path[sizeof(tilesheet_path)-1] = '\0';
+                free(outPath);
+            }
+        }
         if (ImGui::Button("Load Tilesheet") ||
             last_path != std::string(tilesheet_path) ||
             last_rows != tilesheet_rows ||
@@ -456,6 +533,32 @@ void UI::show_file_browser() {
     static std::string current_path = ".";
     ImGui::Begin("File Browser");
     ImGui::Text("Current path: %s", current_path.c_str());
+    if (ImGui::Button("Выбрать файл")) {
+        nfdchar_t *outPath = NULL;
+        nfdresult_t result = NFD_OpenDialog(NULL, NULL, &outPath);
+        if (result == NFD_OKAY && outPath) {
+            selected_file_path = outPath;
+            // Открыть файл, если это текстовый
+            std::string ext = std::filesystem::path(selected_file_path).extension().string();
+            if (ext == ".txt" || ext == ".lua" || ext == ".glsl" || ext == ".vert" || ext == ".frag" || ext == ".md" || ext == ".cpp" || ext == ".hpp" || ext == ".h" || ext == ".c") {
+                std::ifstream in(selected_file_path);
+                std::stringstream buffer;
+                buffer << in.rdbuf();
+                editor.SetText(buffer.str());
+                editor_initialized = true;
+                save_requested = false;
+                if (ext == ".lua")
+                    editor.SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
+                else if (ext == ".cpp" || ext == ".hpp" || ext == ".h" || ext == ".c")
+                    editor.SetLanguageDefinition(TextEditor::LanguageDefinition::CPlusPlus());
+                else
+                    editor.SetLanguageDefinition(TextEditor::LanguageDefinition());
+            } else {
+                editor_initialized = false;
+            }
+            free(outPath);
+        }
+    }
     if (current_path != ".") {
         if (ImGui::Button(".. (Up)")) {
             current_path = std::filesystem::path(current_path).parent_path().string();
@@ -498,9 +601,11 @@ void UI::show_file_browser() {
     if (editor_initialized && !selected_file_path.empty()) {
         ImGui::Begin("Text Editor");
         ImGui::Text("Editing: %s", selected_file_path.c_str());
-        ImGui::BeginChild("TextEditor");
-        editor.Render("TextEditor");
-        ImGui::EndChild();
+        bool child_open = ImGui::BeginChild("TextEditor");
+        if (child_open) {
+            editor.Render("TextEditor");
+            ImGui::EndChild();
+        }
         if (ImGui::Button("Save")) {
             save_requested = true;
         }
@@ -509,6 +614,7 @@ void UI::show_file_browser() {
             out << editor.GetText();
             save_requested = false;
         }
+        ImGui::EndChild();
         ImGui::End();
     }
 }

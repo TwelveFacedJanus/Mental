@@ -1,7 +1,7 @@
 # Mental
 2D/3D Game Engine written from scratch with OpenGL renderer.
 
-![alt text](Docs/Screenshots/screenshot.png)
+![alt text](Docs/Screenshots/screenshot2.png)
 
 # Dependencies:
 - cmake
