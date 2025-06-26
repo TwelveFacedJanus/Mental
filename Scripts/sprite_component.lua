@@ -1,5 +1,5 @@
 angle = (angle or 0)
-speed = (speed or 1)
+speed = (speed or 3)
 position_x = (position_x or 0)
 position_y = (position_y or 0)
 
@@ -74,5 +74,6 @@ function process(delta)
     set_position(position_x, position_y, 0)
     export_sprite_position(position_x, position_y, 0)
 end
+
 
 

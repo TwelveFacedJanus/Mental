@@ -10,12 +10,15 @@ extern "C" {
 #include <lua/lualib.h>
 }
 
+
 #include "Component.hpp"
+
+#include "Ui.hpp"
 
 #define OPENGL_VERSION_MAJOR 3
 #define OPENGL_VERSION_MINOR 3
 
-class MentalWindow
+class MentalWindow : public UI
 {
     private:
         GLFWwindow* window = nullptr;
@@ -26,8 +29,11 @@ class MentalWindow
         void initialize_glew() noexcept(false);
         void set_window_hints() noexcept(true);
         void create_window() noexcept(false);
+        void load_root_script();
     public:
         MentalWindow();
         void main_loop();
+        void addSprite2D(Sprite2D* sprite, float x, float y, float z, const std::string& script_path, const glm::mat4& default_view, const glm::mat4& default_projection, float delta);
+        void addTriangle(Triangle* tr, const glm::mat4& default_view, const glm::mat4& default_projection, float delta);
         ~MentalWindow();
 };

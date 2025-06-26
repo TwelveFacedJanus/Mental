@@ -13,6 +13,7 @@ set(EXECUTABLE ${SFD}/main.cpp
     ${SFD}/Components/Sprite2D.cpp
     ${SFD}/Components/Camera.cpp
     ${SFD}/Components/AnimatedSprite2D.cpp
+    ${SFD}/Ui.cpp
 )
 
 # Find GLFW
