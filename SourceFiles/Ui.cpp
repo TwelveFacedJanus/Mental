@@ -2,6 +2,7 @@
 #include "Ui.hpp"
 #include "Component.hpp"
 #include <filesystem>
+#include <unordered_map>
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,12 +84,303 @@ void UI::create_new_frame() {
     ImGui::NewFrame();
 }
 
+void UI::show_node_hierarchy(Node* node, const std::string& label_prefix) {
+    std::string label = label_prefix + " (Node)";
+    ImGuiTreeNodeFlags node_flags = 0;
+    bool open = ImGui::TreeNodeEx(label.c_str(), node_flags);
+    bool node_selected = false;
+    if (ImGui::IsItemClicked()) {
+        // Можно добавить выделение Node, если нужно
+        // node_selected = true; // если нужно выделять
+    }
+    if (open) {
+        // Кнопка добавления дочернего компонента
+        if (ImGui::Button(("Добавить дочерний компонент##" + label_prefix).c_str())) {
+            ImGui::OpenPopup(("add_child_popup##" + label_prefix).c_str());
+        }
+        static int child_type = 0;
+        static char child_name[64] = "";
+        static const char* child_types[] = {"Sprite2D", "Triangle", "AnimatedSprite2D", "TileMap", "Camera", "Node"};
+        if (ImGui::BeginPopup(("add_child_popup##" + label_prefix).c_str())) {
+            ImGui::InputText("Имя", child_name, sizeof(child_name));
+            for (int i = 0; i < IM_ARRAYSIZE(child_types); ++i) {
+                if (ImGui::Selectable(child_types[i], child_type == i)) {
+                    child_type = i;
+                }
+            }
+            if (ImGui::Button("Добавить") && strlen(child_name) > 0) {
+                std::shared_ptr<Component> new_comp;
+                if (child_type == 0) { // Sprite2D
+                    new_comp = std::make_shared<Sprite2D>();
+                } else if (child_type == 1) { // Triangle
+                    new_comp = std::make_shared<Triangle>();
+                } else if (child_type == 2) { // AnimatedSprite2D
+                    new_comp = std::make_shared<AnimatedSprite2D>(4, 4, 0.1f);
+                } else if (child_type == 3) { // TileMap
+                    auto tilemap = std::make_shared<TileMap>();
+                    tilemap->setMap(8, 8, std::vector<int>(64, 0));
+                    tilemap->setShader();
+                    new_comp = tilemap;
+                } else if (child_type == 4) { // Camera
+                    new_comp = std::make_shared<Camera>();
+                } else if (child_type == 5) { // Node
+                    auto new_node = std::make_shared<Node>();
+                    node->add_node(child_name, new_node);
+                    ImGui::CloseCurrentPopup();
+                    child_name[0] = '\0';
+                    child_type = 0;
+                    return;
+                }
+                node->add_component(child_name, new_comp);
+                ImGui::CloseCurrentPopup();
+                child_name[0] = '\0';
+                child_type = 0;
+            }
+            ImGui::EndPopup();
+        }
+        // Минимальный рабочий пример для первого дочернего компонента
+        static std::string comp_unique_id, comp_name_cache;
+        static bool open_rename = false, open_delete = false, open_script = false;
+        static std::string rename_buf, script_buf;
+        for (auto it = node->child_components.begin(); it != node->child_components.end(); ++it) {
+            const std::string& comp_name = it->first;
+            auto& comp_ptr = it->second;
+            std::string comp_label = comp_name;
+            if (dynamic_cast<AnimatedSprite2D*>(comp_ptr.get())) comp_label += " (AnimatedSprite2D)";
+            else if (dynamic_cast<TileMap*>(comp_ptr.get())) comp_label += " (TileMap)";
+            else if (dynamic_cast<Sprite2D*>(comp_ptr.get())) comp_label += " (Sprite2D)";
+            else if (dynamic_cast<Triangle*>(comp_ptr.get())) comp_label += " (Triangle)";
+            else if (dynamic_cast<Camera*>(comp_ptr.get())) comp_label += " (Camera)";
+            std::string unique_id = label_prefix + comp_name;
+            ImGuiTreeNodeFlags comp_flags = ImGuiTreeNodeFlags_Leaf;
+            bool open = ImGui::TreeNodeEx((comp_label + "##" + unique_id).c_str(), comp_flags);
+            // Выделение компонента при клике
+            if (ImGui::IsItemClicked()) {
+                // Найти индекс этого компонента в g_lua_components
+                auto itg = std::find(g_lua_components.begin(), g_lua_components.end(), comp_ptr.get());
+                if (itg != g_lua_components.end()) {
+                    selected_component_index = static_cast<int>(std::distance(g_lua_components.begin(), itg));
+                }
+            }
+            if (ImGui::BeginPopupContextItem(("context_comp_" + unique_id).c_str())) {
+                if (ImGui::MenuItem("Переименовать")) {
+                    open_rename = true;
+                    comp_unique_id = unique_id;
+                    comp_name_cache = comp_name;
+                    rename_buf = comp_name;
+                }
+                if (ImGui::MenuItem("Удалить")) {
+                    open_delete = true;
+                    comp_unique_id = unique_id;
+                    comp_name_cache = comp_name;
+                }
+                if (!comp_ptr->get_script_path().empty()) {
+                    if (ImGui::MenuItem("Отключить скрипт")) {
+                        comp_ptr->add_script("");
+                    }
+                    if (ImGui::MenuItem("Редактировать скрипт")) {
+                        auto itg = std::find(g_lua_components.begin(), g_lua_components.end(), comp_ptr.get());
+                        if (itg != g_lua_components.end()) {
+                            script_edit_index = static_cast<int>(std::distance(g_lua_components.begin(), itg));
+                            script_edit_path = comp_ptr->get_script_path();
+                        }
+                    }
+                } else {
+                    if (ImGui::MenuItem("Создать скрипт")) {
+                        auto itg = std::find(g_lua_components.begin(), g_lua_components.end(), comp_ptr.get());
+                        if (itg != g_lua_components.end()) {
+                            script_edit_index = static_cast<int>(std::distance(g_lua_components.begin(), itg));
+                            script_edit_path = "";
+                        }
+                    }
+                }
+                ImGui::EndPopup();
+            }
+            ImGui::TreePop();
+        }
+        // Popup'ы вне цикла
+        if (open_rename) {
+            ImGui::OpenPopup(("rename_comp_popup_" + comp_unique_id).c_str());
+            open_rename = false;
+        }
+        if (open_delete) {
+            ImGui::OpenPopup(("delete_comp_popup_" + comp_unique_id).c_str());
+            open_delete = false;
+        }
+        if (open_script) {
+            ImGui::OpenPopup(("attach_script_popup_" + comp_unique_id).c_str());
+            open_script = false;
+        }
+        // Переименование
+        if (ImGui::BeginPopupModal(("rename_comp_popup_" + comp_unique_id).c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+            char input_buf[64];
+            strncpy(input_buf, rename_buf.c_str(), sizeof(input_buf));
+            if (ImGui::InputText("Новое имя", input_buf, sizeof(input_buf))) {
+                rename_buf = input_buf;
+            }
+            if (ImGui::Button("OK") && !rename_buf.empty() && comp_name_cache != rename_buf) {
+                auto it = node->child_components.find(comp_name_cache);
+                if (it != node->child_components.end()) {
+                    auto node_ptr = it->second;
+                    node->child_components.erase(it);
+                    node->child_components[rename_buf] = node_ptr;
+                }
+                rename_buf.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Отмена")) {
+                rename_buf.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        // Удаление
+        if (ImGui::BeginPopupModal(("delete_comp_popup_" + comp_unique_id).c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("Удалить компонент '%s'?", comp_name_cache.c_str());
+            if (ImGui::Button("Да")) {
+                auto it = node->child_components.find(comp_name_cache);
+                if (it != node->child_components.end()) {
+                    Component* ptr = it->second.get();
+                    node->child_components.erase(it);
+                    // Удалить из g_lua_components
+                    auto git = std::find(g_lua_components.begin(), g_lua_components.end(), ptr);
+                    if (git != g_lua_components.end()) {
+                        int idx = std::distance(g_lua_components.begin(), git);
+                        g_lua_components.erase(git);
+                        if (selected_component_index == idx) selected_component_index = -1;
+                        else if (selected_component_index > idx) selected_component_index--;
+                    }
+                    if (window) window->remove_component_from_pipeline(ptr);
+                }
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Нет")) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        // Прикрепление скрипта
+        if (ImGui::BeginPopupModal(("attach_script_popup_" + comp_unique_id).c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+            char input_buf[256];
+            strncpy(input_buf, script_buf.c_str(), sizeof(input_buf));
+            if (ImGui::InputText("Путь к скрипту", input_buf, sizeof(input_buf))) {
+                script_buf = input_buf;
+            }
+            if (ImGui::Button("OK") && !script_buf.empty()) {
+                auto it = node->child_components.find(comp_name_cache);
+                if (it != node->child_components.end()) {
+                    it->second->add_script(script_buf);
+                    it->second->run_script_main();
+                }
+                script_buf.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Отмена")) {
+                script_buf.clear();
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        // Показываем дочерние Node
+        for (auto it = node->child_nodes.begin(); it != node->child_nodes.end(); ++it) {
+            const std::string& child_name = it->first;
+            auto& child_node = it->second;
+            ImGui::PushID((label_prefix + child_name).c_str());
+            ImGui::TreeNodeEx((child_name + " (Node)##" + label_prefix + child_name).c_str(), 0);
+            // Контекстное меню по ПКМ
+            if (ImGui::BeginPopupContextItem(("context_node_" + label_prefix + child_name).c_str())) {
+                if (ImGui::MenuItem("Переименовать")) {
+                    ImGui::OpenPopup(("rename_node_popup_" + label_prefix + child_name).c_str());
+                }
+                if (ImGui::MenuItem("Удалить")) {
+                    ImGui::OpenPopup(("delete_node_popup_" + label_prefix + child_name).c_str());
+                }
+                ImGui::EndPopup();
+            }
+            // Popup для переименования Node
+            std::string rename_node_popup_id = "rename_node_popup_" + label_prefix + child_name;
+            if (ImGui::BeginPopupModal(rename_node_popup_id.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                static std::unordered_map<std::string, std::string> rename_node_buffers;
+                std::string& buf = rename_node_buffers[rename_node_popup_id];
+                if (buf.empty()) buf = child_name;
+                char input_buf[64];
+                strncpy(input_buf, buf.c_str(), sizeof(input_buf));
+                if (ImGui::InputText("Новое имя", input_buf, sizeof(input_buf))) {
+                    buf = input_buf;
+                }
+                if (ImGui::Button("OK") && !buf.empty() && child_name != buf) {
+                    auto node_ptr = it->second;
+                    node->child_nodes.erase(it);
+                    node->child_nodes[buf] = node_ptr;
+                    buf.clear();
+                    ImGui::CloseCurrentPopup();
+                    ImGui::TreePop();
+                    ImGui::PopID();
+                    break;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Отмена")) {
+                    buf.clear();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
+            // Popup для удаления Node
+            std::string delete_node_popup_id = "delete_node_popup_" + label_prefix + child_name;
+            if (ImGui::BeginPopupModal(delete_node_popup_id.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+                bool delete_confirmed = false;
+                ImGui::Text("Удалить Node '%s'?", child_name.c_str());
+                if (ImGui::Button("Да")) {
+                    delete_confirmed = true;
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Нет")) {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+                if (delete_confirmed) {
+                    ImGui::TreePop();
+                    ImGui::PopID();
+                    node->child_nodes.erase(it);
+                    break;
+                }
+            }
+            if (child_node) {
+                this->show_node_hierarchy(child_node.get(), child_name);
+            }
+            ImGui::TreePop();
+            ImGui::PopID();
+        }
+        ImGui::TreePop();
+    }
+}
+
 void UI::show_all_components() {
-    // === IMGUI: All Components Widget ===
     if (ImGui::Begin("All Components")) {
-        // --- Кнопка добавления компонента с выбором типа ---
+        // Найти все Node в g_lua_components и показать иерархию
+        for (size_t i = 0; i < g_lua_components.size(); ++i) {
+            Component* comp = g_lua_components[i];
+            if (auto* node = dynamic_cast<Node*>(comp)) {
+                std::string label = "Node " + std::to_string(i) + " (Node)";
+                ImGuiTreeNodeFlags node_flags = 0;
+                if ((int)i == selected_component_index) node_flags |= ImGuiTreeNodeFlags_Selected;
+                bool open = ImGui::TreeNodeEx(label.c_str(), node_flags);
+                if (ImGui::IsItemClicked()) {
+                    selected_component_index = (int)i;
+                }
+                if (open) {
+                    this->show_node_hierarchy(node, "Root");
+                    ImGui::TreePop();
+                }
+            }
+        }
+        // Кнопка добавления компонента с выбором типа
         static int selected_type = 0;
-        static const char* types[] = {"Sprite2D", "Triangle", "AnimatedSprite2D", "TileMap", "Camera"};
+        static const char* types[] = {"Sprite2D", "Triangle", "AnimatedSprite2D", "TileMap", "Camera", "Node"};
         if (ImGui::Button("Добавить компонент")) {
             ImGui::OpenPopup("component_type_popup");
         }
@@ -114,216 +406,14 @@ void UI::show_all_components() {
                     } else if (selected_type == 4) { // Camera
                         auto* cam = new Camera();
                         g_lua_components.push_back(cam);
+                    } else if (selected_type == 5) { // Node
+                        auto* node = new Node();
+                        g_lua_components.push_back(node);
                     }
                     ImGui::CloseCurrentPopup();
                 }
             }
             ImGui::EndPopup();
-        }
-        for (size_t i = 0; i < g_lua_components.size(); ++i) {
-            Component* comp = g_lua_components[i];
-            std::string label = "Component " + std::to_string(i);
-            if (dynamic_cast<AnimatedSprite2D*>(comp)) label += " (AnimatedSprite2D)";
-            else if (dynamic_cast<TileMap*>(comp)) label += " (TileMap)";
-            else if (dynamic_cast<Sprite2D*>(comp)) label += " (Sprite2D)";
-            else if (dynamic_cast<Triangle*>(comp)) label += " (Triangle)";
-            // --- Выделение выбранного компонента ---
-            ImGuiTreeNodeFlags node_flags = 0;
-            if ((int)i == selected_component_index) node_flags |= ImGuiTreeNodeFlags_Selected;
-            bool open = ImGui::TreeNodeEx(label.c_str(), node_flags);
-            if (ImGui::IsItemClicked()) {
-                selected_component_index = (int)i;
-            }
-            if (open) {
-                ImGui::Text("Position: (%.2f, %.2f, %.2f)", comp->position.x, comp->position.y, comp->position.z);
-                ImGui::Text("Scale: (%.2f, %.2f, %.2f)", comp->scale.x, comp->scale.y, comp->scale.z);
-                ImGui::Text("Script: %s", comp->get_script_path().empty() ? "<none>" : comp->get_script_path().c_str());
-                if (ImGui::Button(("Edit Script##" + std::to_string(i)).c_str())) {
-                    script_edit_index = (int)i;
-                    script_edit_path = comp->get_script_path();
-                    std::string script_text;
-                    if (!script_edit_path.empty()) {
-                        std::ifstream in(script_edit_path);
-                        std::stringstream buffer;
-                        buffer << in.rdbuf();
-                        script_text = buffer.str();
-                    } else {
-                        script_text = "";
-                    }
-                    editor.SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
-                    editor.SetText(script_text);
-                    editor_initialized = true;
-                }
-                if (auto* anim = dynamic_cast<AnimatedSprite2D*>(comp)) {
-                    ImGui::Separator();
-                    ImGui::Text("AnimatedSprite2D");
-                    ImGui::InputInt(("Rows##" + std::to_string(i)).c_str(), &anim->rows);
-                    ImGui::InputInt(("Columns##" + std::to_string(i)).c_str(), &anim->cols);
-                    ImGui::InputFloat(("Frame Duration##" + std::to_string(i)).c_str(), &anim->frame_duration);
-                    char buf[256];
-                    strncpy(buf, anim->tileset_path.c_str(), sizeof(buf));
-                    ImGui::InputText(("Tileset Path##" + std::to_string(i)).c_str(), buf, sizeof(buf));
-                    ImGui::SameLine();
-                    if (ImGui::Button(("Выбрать тайлсет##" + std::to_string(i)).c_str())) {
-                        nfdchar_t *outPath = NULL;
-                        nfdresult_t result = NFD_OpenDialog("png,jpg,jpeg,bmp,tga", NULL, &outPath);
-                        if (result == NFD_OKAY && outPath) {
-                            strncpy(buf, outPath, sizeof(buf));
-                            buf[sizeof(buf)-1] = '\0';
-                            anim->tileset_path = buf;
-                            free(outPath);
-                        }
-                    }
-                    if (ImGui::Button(("Load Tileset##" + std::to_string(i)).c_str())) {
-                        int w=0,h=0,channels=0;
-                        unsigned char* data = stbi_load(anim->tileset_path.c_str(), &w, &h, &channels, 4);
-                        if (data) {
-                            GLuint texID = 0;
-                            glGenTextures(1, &texID);
-                            glBindTexture(GL_TEXTURE_2D, texID);
-                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                            glBindTexture(GL_TEXTURE_2D, 0);
-                            anim->textureIDs.clear();
-                            anim->textureIDs.push_back(texID);
-                            stbi_image_free(data);
-                        }
-                    }
-                    // === TileMap controls ===
-                    if (auto* tilemap = dynamic_cast<TileMap*>(comp)) {
-                        static char tileset_path[256] = "";
-                        static char tilemap_save_path[256] = "tilemap.txt";
-                        static char tilemap_load_path[256] = "tilemap.txt";
-                        ImGui::Separator();
-                        ImGui::Text("TileMap");
-                        ImGui::InputInt("Rows", &tilemap->rows);
-                        ImGui::InputInt("Columns", &tilemap->cols);
-                        ImGui::InputInt("Tile Width", &tilemap->tile_width);
-                        ImGui::InputInt("Tile Height", &tilemap->tile_height);
-                        ImGui::InputInt("Tileset Rows", &tilemap->tileset_rows);
-                        ImGui::InputInt("Tileset Columns", &tilemap->tileset_cols);
-                        ImGui::InputFloat3("Position", (float*)&tilemap->position);
-                        ImGui::InputFloat3("Scale", (float*)&tilemap->scale);
-                        ImGui::InputText("Tileset Path", tileset_path, sizeof(tileset_path));
-                        if (ImGui::Button("Load Tileset")) {
-                            int w=0,h=0,channels=0;
-                            unsigned char* data = stbi_load(tileset_path, &w, &h, &channels, 4);
-                            if (data) {
-                                GLuint texID = 0;
-                                glGenTextures(1, &texID);
-                                glBindTexture(GL_TEXTURE_2D, texID);
-                                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                                glBindTexture(GL_TEXTURE_2D, 0);
-                                tilemap->tileset_texture = texID;
-                                tilemap->tileset_path = tileset_path;
-                                stbi_image_free(data);
-                            }
-                        }
-                        ImGui::InputText("Save Path", tilemap_save_path, sizeof(tilemap_save_path));
-                        if (ImGui::Button("Save TileMap")) {
-                            tilemap->tileset_path = tileset_path;
-                            tilemap->saveToFile(tilemap_save_path);
-                        }
-                        ImGui::InputText("Load Path", tilemap_load_path, sizeof(tilemap_load_path));
-                        if (ImGui::Button("Load TileMap")) {
-                            if (tilemap->loadFromFile(tilemap_load_path)) {
-                                strncpy(tileset_path, tilemap->tileset_path.c_str(), sizeof(tileset_path));
-                                // Автоматически загрузить текстуру
-                                int w=0,h=0,channels=0;
-                                unsigned char* data = stbi_load(tileset_path, &w, &h, &channels, 4);
-                                if (data) {
-                                    GLuint texID = 0;
-                                    glGenTextures(1, &texID);
-                                    glBindTexture(GL_TEXTURE_2D, texID);
-                                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                                    glBindTexture(GL_TEXTURE_2D, 0);
-                                    tilemap->tileset_texture = texID;
-                                    stbi_image_free(data);
-                                }
-                                tilemap->setShader();
-                            }
-                        }
-                        // Обновить размер tiles при изменении rows/cols
-                        if ((int)tilemap->tiles.size() != tilemap->rows * tilemap->cols) {
-                            tilemap->tiles.resize(tilemap->rows * tilemap->cols, 0);
-                        }
-                        // --- Визуальный редактор тайлов ---
-                        static int selected_tile_palette = 0;
-                        if (tilemap->tileset_texture && tilemap->tileset_rows > 0 && tilemap->tileset_cols > 0) {
-                            ImGui::Text("TileMap Editor:");
-                            int grid_w = tilemap->cols;
-                            int grid_h = tilemap->rows;
-                            float cell_sz = 32.0f;
-                            ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                            ImVec2 start = ImGui::GetCursorScreenPos();
-                            // Рисуем сетку и тайлы
-                            for (int y = 0; y < grid_h; ++y) {
-                                for (int x = 0; x < grid_w; ++x) {
-                                    int idx = tilemap->tiles[y*grid_w + x];
-                                    int t_row = idx / tilemap->tileset_cols;
-                                    int t_col = idx % tilemap->tileset_cols;
-                                    float u0 = (float)t_col / tilemap->tileset_cols;
-                                    float v0 = (float)t_row / tilemap->tileset_rows;
-                                    float u1 = (float)(t_col+1) / tilemap->tileset_cols;
-                                    float v1 = (float)(t_row+1) / tilemap->tileset_rows;
-                                    ImVec2 uv0(u0, v1);
-                                    ImVec2 uv1(u1, v0);
-                                    ImVec2 p0 = ImVec2(start.x + x*cell_sz, start.y + y*cell_sz);
-                                    ImVec2 p1 = ImVec2(p0.x + cell_sz, p0.y + cell_sz);
-                                    draw_list->AddImage((void*)(intptr_t)tilemap->tileset_texture, p0, p1, uv0, uv1);
-                                    draw_list->AddRect(p0, p1, IM_COL32(128,128,128,255));
-                                    // Клик по клетке — рисуем выбранным тайлом
-                                    ImGui::SetCursorScreenPos(p0);
-                                    ImGui::InvisibleButton(("cell"+std::to_string(x)+"_"+std::to_string(y)).c_str(), ImVec2(cell_sz, cell_sz));
-                                    if (ImGui::IsItemClicked()) {
-                                        tilemap->tiles[y*grid_w + x] = selected_tile_palette;
-                                    }
-                                }
-                            }
-                            ImGui::SetCursorScreenPos(ImVec2(start.x, start.y + grid_h*cell_sz));
-                            ImGui::Dummy(ImVec2(grid_w*cell_sz, 0));
-                            // --- Палитра тайлов ---
-                            ImGui::Text("Tile Palette:");
-                            float palette_cell = 28.0f;
-                            int palette_cols = tilemap->tileset_cols;
-                            int palette_rows = tilemap->tileset_rows;
-                            ImVec2 palette_start = ImGui::GetCursorScreenPos();
-                            for (int py = 0; py < palette_rows; ++py) {
-                                for (int px = 0; px < palette_cols; ++px) {
-                                    int tidx = py*palette_cols + px;
-                                    float u0 = (float)px / palette_cols;
-                                    float v0 = (float)py / palette_rows;
-                                    float u1 = (float)(px+1) / palette_cols;
-                                    float v1 = (float)(py+1) / palette_rows;
-                                    ImVec2 uv0(u0, v1);
-                                    ImVec2 uv1(u1, v0);
-                                    ImVec2 pp0 = ImVec2(palette_start.x + px*palette_cell, palette_start.y + py*palette_cell);
-                                    ImVec2 pp1 = ImVec2(pp0.x + palette_cell, pp0.y + palette_cell);
-                                    draw_list->AddImage((void*)(intptr_t)tilemap->tileset_texture, pp0, pp1, uv0, uv1);
-                                    if (tidx == selected_tile_palette) {
-                                        draw_list->AddRect(pp0, pp1, IM_COL32(255,255,0,255), 0, 0, 3.0f);
-                                    } else {
-                                        draw_list->AddRect(pp0, pp1, IM_COL32(128,128,128,255));
-                                    }
-                                    ImGui::SetCursorScreenPos(pp0);
-                                    ImGui::InvisibleButton(("palette"+std::to_string(px)+"_"+std::to_string(py)).c_str(), ImVec2(palette_cell, palette_cell));
-                                    if (ImGui::IsItemClicked()) {
-                                        selected_tile_palette = tidx;
-                                    }
-                                }
-                            }
-                            ImGui::SetCursorScreenPos(ImVec2(palette_start.x, palette_start.y + palette_rows*palette_cell));
-                            ImGui::Dummy(ImVec2(palette_cols*palette_cell, 0));
-                        }
-                    }
-                }
-                ImGui::TreePop();
-            }
         }
     }
     ImGui::End();
@@ -331,6 +421,19 @@ void UI::show_all_components() {
 
 void UI::show_script_editor() {
     if (script_edit_index >= 0) {
+        // Если редактор не инициализирован и есть путь к скрипту — загрузить содержимое
+        if (!editor_initialized && !script_edit_path.empty()) {
+            std::ifstream in(script_edit_path);
+            if (in) {
+                std::stringstream buffer;
+                buffer << in.rdbuf();
+                editor.SetText(buffer.str());
+                editor_initialized = true;
+            } else {
+                editor.SetText("");
+                editor_initialized = true;
+            }
+        }
         bool open = ImGui::Begin("Lua Script Editor", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
         if (open) {
             ImGui::Text("Editing: %s", script_edit_path.empty() ? "<none>" : script_edit_path.c_str());

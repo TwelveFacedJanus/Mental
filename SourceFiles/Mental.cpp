@@ -80,6 +80,7 @@ void MentalWindow::load_root_script() {
     Component::register_sprite2d(rootL);
     Component::register_triangle(rootL);
     Component::register_camera(rootL);
+    Node::register_node(rootL);
     if (luaL_dofile(rootL, "./Scripts/root.lua") != LUA_OK) {
         std::cerr << "Lua error: " << lua_tostring(rootL, -1) << std::endl;
         lua_pop(rootL, 1);
@@ -107,8 +108,8 @@ void MentalWindow::addSprite2D(Sprite2D* sprite, float x, float y, float z, cons
         sprite->run_script_main();
     }
     g_lua_components.push_back(sprite);
-    this->rp->add(std::bind(&Sprite2D::apply_shader, sprite));
-    this->rp->add([sprite, this, &default_view, &default_projection]() {
+    this->rp->add(sprite, std::bind(&Sprite2D::apply_shader, sprite));
+    this->rp->add(sprite, [sprite, this, &default_view, &default_projection]() {
         glm::mat4 view = g_active_camera ? g_active_camera->getView() : default_view;
         glm::mat4 projection = g_active_camera ? g_active_camera->getProjection() : default_projection;
         GLuint modelLoc = glGetUniformLocation(sprite->shaderProgram, "model");
@@ -118,17 +119,17 @@ void MentalWindow::addSprite2D(Sprite2D* sprite, float x, float y, float z, cons
         GLuint projectionLoc = glGetUniformLocation(sprite->shaderProgram, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
     });
-    this->rp->add(std::bind(&Sprite2D::draw, sprite));
-    this->rp->add(std::bind(&Sprite2D::reload_script_if_changed, sprite));
-    this->rp->add([sprite, delta]() { sprite->call_process(delta); });
+    this->rp->add(sprite, std::bind(&Sprite2D::draw, sprite));
+    this->rp->add(sprite, std::bind(&Sprite2D::reload_script_if_changed, sprite));
+    this->rp->add(sprite, [sprite, delta]() { sprite->call_process(delta); });
 }
 
 void MentalWindow::addTriangle(Triangle* tri, const glm::mat4& default_view, const glm::mat4& default_projection, float delta)
 {
     tri->setShader();
     g_lua_components.push_back(tri);
-    this->rp->add(std::bind(&Triangle::apply_shader, tri));
-    this->rp->add([tri, this, &default_view, &default_projection]() {
+    this->rp->add(tri, std::bind(&Triangle::apply_shader, tri));
+    this->rp->add(tri, [tri, this, &default_view, &default_projection]() {
         glm::mat4 view = g_active_camera ? g_active_camera->getView() : default_view;
         glm::mat4 projection = g_active_camera ? g_active_camera->getProjection() : default_projection;
         GLuint modelLoc = glGetUniformLocation(tri->shaderProgram, "model");
@@ -138,9 +139,9 @@ void MentalWindow::addTriangle(Triangle* tri, const glm::mat4& default_view, con
         GLuint projectionLoc = glGetUniformLocation(tri->shaderProgram, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
     });
-    this->rp->add(std::bind(&Triangle::draw, tri));
-    this->rp->add(std::bind(&Triangle::reload_script_if_changed, tri));
-    this->rp->add([tri, delta]() { tri->call_process(delta); });
+    this->rp->add(tri, std::bind(&Triangle::draw, tri));
+    this->rp->add(tri, std::bind(&Triangle::reload_script_if_changed, tri));
+    this->rp->add(tri, [tri, delta]() { tri->call_process(delta); });
 }
 
 void MentalWindow::main_loop() {
@@ -148,6 +149,8 @@ void MentalWindow::main_loop() {
     this->load_root_script();
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
     glm::mat4 default_projection = glm::perspective(glm::radians(45.0f), 800.0f/600.0f, 0.1f, 100.0f);
     glm::mat4 default_view = glm::lookAt(
         glm::vec3(0.0f, 0.0f, 3.0f),
@@ -156,24 +159,49 @@ void MentalWindow::main_loop() {
     );
     float delta = 0.0f;
 
+    auto root_node = std::make_shared<Node>();
+    g_lua_components.push_back(root_node.get());
+
     // ===== CAMERA ======
-    Camera camera;
-    camera.set_position(0.0f, 0.0f, 3.0f);
-    camera.look_at(0.0f, 0.0f, 0.0f);
-    g_active_camera = &camera;
-    g_lua_components.push_back(&camera);
+    auto camera_ptr = std::make_shared<Camera>();
+    camera_ptr->set_position(0.0f, 0.0f, 3.0f);
+    camera_ptr->look_at(0.0f, 0.0f, 0.0f);
+    g_active_camera = camera_ptr.get();
+    g_lua_components.push_back(g_active_camera);
+    root_node->add_component("camera", camera_ptr);
 
     // ===== FBO INIT =====
     create_viewport_fbo(viewport_width, viewport_height);
+    auto sprite_ptr = std::make_shared<Sprite2D>();
+    addSprite2D(sprite_ptr.get(), 0.5f, 0.0f, 0.0f, "./Scripts/sprite_component.lua", default_view, default_projection, delta);
+    root_node->add_component("sprite", sprite_ptr);
 
     // ===== BACKGROUND ======
-    Sprite2D bg;
-    addSprite2D(&bg, 0.0f, 0.0f, 0.0f, "./Scripts/background_component.lua", default_view, default_projection, delta);
+    auto bg_ptr = std::make_shared<Sprite2D>();
+    addSprite2D(bg_ptr.get(), 0.0f, 0.0f, 0.0f, "./Scripts/background_component.lua", default_view, default_projection, delta);
+    root_node->add_component("background", bg_ptr);
+
+    // ===== CUBE3D =====
+    auto cube_ptr = std::make_shared<Cube3D>();
+    cube_ptr->setShader();
+    cube_ptr->applyTexture("Textures/minecraft_block.jpg");
+    cube_ptr->set_position(-1.0f, 0.0f, 0.0f);
+    g_lua_components.push_back(cube_ptr.get());
+    this->rp->add(cube_ptr.get(), std::bind(&Cube3D::apply_shader, cube_ptr.get()));
+    this->rp->add(cube_ptr.get(), [cube_ptr, this, &default_view, &default_projection]() {
+        glm::mat4 view = g_active_camera ? g_active_camera->getView() : default_view;
+        glm::mat4 projection = g_active_camera ? g_active_camera->getProjection() : default_projection;
+        GLuint modelLoc = glGetUniformLocation(cube_ptr->shaderProgram, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(cube_ptr->model));
+        GLuint viewLoc = glGetUniformLocation(cube_ptr->shaderProgram, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        GLuint projectionLoc = glGetUniformLocation(cube_ptr->shaderProgram, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    });
+    this->rp->add(cube_ptr.get(), std::bind(&Cube3D::draw, cube_ptr.get()));
+    root_node->add_component("cube", cube_ptr);
 
     // ===== PLAYER =====
-    Sprite2D sprite;
-    addSprite2D(&sprite, 0.5f, 0.0f, 0.0f, "./Scripts/sprite_component.lua", default_view, default_projection, delta);
-
     UI ui;
 
     double lastTime = glfwGetTime();
@@ -188,9 +216,9 @@ void MentalWindow::main_loop() {
             }
         }
         // --- CAMERA FOLLOWS PLAYER ---
-        glm::vec3 target_cam_pos(sprite.position.x, sprite.position.y, 3.0f);
-        glm::vec3 target_cam_look(sprite.position.x, sprite.position.y, 0.0f);
-        camera.update_interpolated(0.1f, target_cam_pos, target_cam_look);
+        glm::vec3 target_cam_pos(sprite_ptr->position.x, sprite_ptr->position.y, 3.0f);
+        glm::vec3 target_cam_look(sprite_ptr->position.x, sprite_ptr->position.y, 0.0f);
+        camera_ptr->update_interpolated(0.1f, target_cam_pos, target_cam_look);
         // === IMGUI FRAME START ===
         ui.set_context(this, default_view, default_projection, delta);
         create_new_frame();
@@ -227,6 +255,7 @@ void MentalWindow::main_loop() {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         rp->run();
+        root_node->draw();
         for (Component* comp : g_lua_components) {
             if (auto* tilemap = dynamic_cast<TileMap*>(comp)) tilemap->draw();
             comp->call_process(delta);
@@ -277,4 +306,8 @@ void MentalWindow::main_loop() {
 MentalWindow::~MentalWindow() {
     if (this->window) glfwDestroyWindow(this->window);
     glfwTerminate();
+}
+
+void MentalWindow::remove_component_from_pipeline(Component* comp) {
+    if (rp) rp->remove_for_component(comp);
 }

@@ -57,6 +57,7 @@ public:
     void show_component_properties(Component* comp);
     void show_component_selector();
     void show_file_browser();
+    void show_node_hierarchy(Node* node, const std::string& label_prefix = "Root");
     // Здесь можно добавить другие методы для отдельных виджетов
     std::string selected_file_path;
     const std::string& get_selected_file_path() const { return selected_file_path; }

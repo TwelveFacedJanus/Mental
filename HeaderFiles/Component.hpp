@@ -12,12 +12,12 @@
 #include <vector>
 #include <set>
 #include <map>
-extern "C" {
-#include <lua.h>
-#include <lauxlib.h>
-#include <lualib.h>
-}
 
+extern "C" {
+    #include <lua.h>
+    #include <lauxlib.h>
+    #include <lualib.h>
+}
 
 #include "stb_image.h"
 
@@ -32,26 +32,7 @@ protected:
     std::filesystem::file_time_type last_script_write_time;
     GLuint textureID = 0;
     
-    void init_buffers(const float* vertices, size_t vert_size, const unsigned int* indices, size_t ind_size, int pos_size, int tex_offset = -1, int tex_size = 0) {
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, vert_size, vertices, GL_STATIC_DRAW);
-        if (indices && ind_size > 0) {
-            glGenBuffers(1, &EBO);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, ind_size, indices, GL_STATIC_DRAW);
-        }
-        glVertexAttribPointer(0, pos_size, GL_FLOAT, GL_FALSE, (pos_size + tex_size) * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        if (tex_offset >= 0 && tex_size > 0) {
-            glVertexAttribPointer(1, tex_size, GL_FLOAT, GL_FALSE, (pos_size + tex_size) * sizeof(float), (void*)(tex_offset * sizeof(float)));
-            glEnableVertexAttribArray(1);
-        }
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-    }
+    void init_buffers(const float* vertices, size_t vert_size, const unsigned int* indices, size_t ind_size, int pos_size, int tex_offset = -1, int tex_size = 0);
 public:
     glm::mat4 model = glm::mat4(1.0f);
     glm::vec3 position = glm::vec3(0.0f);
@@ -92,30 +73,32 @@ public:
     static int lua_reset_model_matrix(lua_State* L);
     static int lua_apply_texture(lua_State* L);
     static int lua_get_glfw_action(lua_State* L);
-    static void register_sprite2d(lua_State* L);
-    static int lua_sprite2d_set_position(lua_State* L);
-    static int lua_sprite2d_apply_texture(lua_State* L);
-    static int lua_sprite2d_rotate(lua_State* L);
-    static int lua_sprite2d_reset_model_matrix(lua_State* L);
-    static int lua_create_sprite2d(lua_State* L);
+    
+    
     static int lua_triangle_set_position(lua_State* L);
     static int lua_triangle_rotate(lua_State* L);
     static int lua_triangle_reset_model_matrix(lua_State* L);
     static int lua_create_triangle(lua_State* L);
     static void register_triangle(lua_State* L);
+    
     static int lua_camera_set_position(lua_State* L);
     static int lua_camera_look_at(lua_State* L);
     static int lua_camera_set_perspective(lua_State* L);
     static int lua_create_camera(lua_State* L);
     static void register_camera(lua_State* L);
     static int lua_set_active_camera(lua_State* L);
+
     static int lua_export_sprite_position(lua_State* L);
     static int lua_sprite2d_add_script(lua_State* L);
     static int lua_sprite2d_set_scale(lua_State* L);
+    static int lua_sprite2d_set_position(lua_State* L);
+    static int lua_sprite2d_apply_texture(lua_State* L);
+    static int lua_sprite2d_rotate(lua_State* L);
+    static int lua_sprite2d_reset_model_matrix(lua_State* L);
+    static int lua_create_sprite2d(lua_State* L);
     static int lua_sprite2d_flip_h(lua_State* L);
+    static void register_sprite2d(lua_State* L);
     
-
-   
     const std::string& get_script_path() const { return script_path; }
 };
 
@@ -135,29 +118,12 @@ public:
          0.5f, -0.5f, 0.0f,  1.0f, 0.0f,
          0.0f,  0.5f, 0.0f,  0.5f, 1.0f
     };
-    Triangle() {
-        init_buffers(vertices, sizeof(vertices), nullptr, 0, 3, 3, 2);
-    }
-    void apply_shader() override {
-        _apply_shader(&this->shaderProgram);
-        glUniform1i(glGetUniformLocation(this->shaderProgram, "ourTexture"), 0);
-    }
-    void setShader(const std::string& vertexPath = "./Shaders/triangle.vert", const std::string& fragmentPath = "./Shaders/triangle.frag") override {
-        _set_shader(vertexPath, fragmentPath, &this->shaderProgram);
-    }
-    void draw() override {
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        glBindVertexArray(0);
-    }
-    ~Triangle() {
-        glDeleteVertexArrays(1, &VAO);
-        glDeleteBuffers(1, &VBO);
-        if (shaderProgram) glDeleteProgram(shaderProgram);
-    }
-    GLuint getShaderProgram() const override { return shaderProgram; }
+    Triangle();
+    void apply_shader() override;
+    void setShader(const std::string& vertexPath = "./Shaders/triangle.vert", const std::string& fragmentPath = "./Shaders/triangle.frag") override;
+    void draw() override;
+    ~Triangle();
+    GLuint getShaderProgram() const override;
 };
 
 class Rect : public Component
@@ -174,24 +140,11 @@ public:
         0, 1, 3,   // first triangle
         1, 2, 3    // second triangle
     };
-    Rect() {
-        init_buffers(vertices, sizeof(vertices), indices, sizeof(indices), 3);
-    }
-    void setShader(const std::string& vertexPath = "./Shaders/rectangle.vert", const std::string& fragmentPath = "./Shaders/rectangle.frag") override {
-        _set_shader(vertexPath, fragmentPath, &this->shaderProgram);
-    }
-    void draw() override {
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
-    }
-    ~Rect() {
-        glDeleteVertexArrays(1, &VAO);
-        glDeleteBuffers(1, &VBO);
-        glDeleteBuffers(1, &EBO);
-        if (shaderProgram) glDeleteProgram(shaderProgram);
-    }
-    GLuint getShaderProgram() const override { return shaderProgram; }
+    Rect();
+    void setShader(const std::string& vertexPath = "./Shaders/rectangle.vert", const std::string& fragmentPath = "./Shaders/rectangle.frag") override;
+    void draw() override;
+    ~Rect();
+    GLuint getShaderProgram() const override;
 };
 
 class Sprite2D : public Component {
@@ -243,46 +196,21 @@ private:
     glm::vec3 interp_position;
     glm::vec3 interp_target;
 public:
-    Camera(
-        glm::vec3 pos = glm::vec3(0,0,3),
-        glm::vec3 tgt = glm::vec3(0,0,0),
-        glm::vec3 upv = glm::vec3(0,1,0),
-        float fov_ = 45.0f, float aspect_ = 4.0f/3.0f, float near_ = 0.1f, float far_ = 100.0f
-    ) : position(pos), target(tgt), up(upv), fov(fov_), aspect(aspect_), nearPlane(near_), farPlane(far_) {
-        interp_position = pos;
-        interp_target = tgt;
-        update_matrices();
-    }
-    void set_position(float x, float y, float z) override {
-        position = glm::vec3(x, y, z);
-        update_matrices();
-    }
-    void look_at(float x, float y, float z) {
-        target = glm::vec3(x, y, z);
-        update_matrices();
-    }
-    void set_perspective(float fov_, float aspect_, float near_, float far_) {
-        fov = fov_; aspect = aspect_; nearPlane = near_; farPlane = far_;
-        update_matrices();
-    }
-    void update_matrices() {
-        view = glm::lookAt(position, target, up);
-        projection = glm::perspective(glm::radians(fov), aspect, nearPlane, farPlane);
-    }
-    void update_interpolated(float alpha, const glm::vec3& new_pos, const glm::vec3& new_target) {
-        interp_position = glm::mix(interp_position, new_pos, alpha);
-        interp_target = glm::mix(interp_target, new_target, alpha);
-        view = glm::lookAt(interp_position, interp_target, up);
-        projection = glm::perspective(glm::radians(fov), aspect, nearPlane, farPlane);
-    }
-    glm::vec3 getInterpPosition() const { return interp_position; }
-    glm::vec3 getInterpTarget() const { return interp_target; }
-    glm::mat4 getView() const { return view; }
-    glm::mat4 getProjection() const { return projection; }
+    Camera( glm::vec3 pos = glm::vec3(0,0,3), glm::vec3 tgt = glm::vec3(0,0,0), glm::vec3 upv = glm::vec3(0,1,0),
+            float fov_ = 45.0f, float aspect_ = 4.0f/3.0f, float near_ = 0.1f, float far_ = 100.0f);
+    void set_position(float x, float y, float z) override;
+    void look_at(float x, float y, float z);
+    void set_perspective(float fov_, float aspect_, float near_, float far_);
+    void update_matrices();
+    void update_interpolated(float alpha, const glm::vec3& new_pos, const glm::vec3& new_target);
+    glm::vec3 getInterpPosition() const;
+    glm::vec3 getInterpTarget() const;
+    glm::mat4 getView() const;
+    glm::mat4 getProjection() const;
     void setShader(const std::string&, const std::string&) override {}
     void apply_shader() override {}
     void draw() override {}
-    GLuint getShaderProgram() const override { return 0; }
+    GLuint getShaderProgram() const override;
 };
 
 class AnimatedSprite2D : public Sprite2D {
@@ -469,4 +397,130 @@ public:
     }
 };
 
+class Cube3D : public Component {
+public:
+    // 8 vertices, 36 indices (12 triangles)
+    float vertices[120] = {
+        // positions         // texcoords
+        // Front face
+        -0.5f, -0.5f,  0.5f, 0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f, 1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f, 1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f, 0.0f, 1.0f,
+        // Back face
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f, 1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f, 0.0f, 1.0f,
+    };
+    unsigned int indices[36] = {
+        // Front face
+        0, 1, 2, 2, 3, 0,
+        // Right face
+        1, 5, 6, 6, 2, 1,
+        // Back face
+        7, 6, 5, 5, 4, 7,
+        // Left face
+        4, 0, 3, 3, 7, 4,
+        // Bottom face
+        4, 5, 1, 1, 0, 4,
+        // Top face
+        3, 2, 6, 6, 7, 3
+    };
+    Cube3D() {
+        init_buffers(vertices, sizeof(vertices), indices, sizeof(indices), 3, 3, 2);
+    }
+    void setShader(const std::string& vertexPath = "./Shaders/triangle.vert", const std::string& fragmentPath = "./Shaders/triangle.frag") override {
+        _set_shader(vertexPath, fragmentPath, &this->shaderProgram);
+    }
+    void apply_shader() override {
+        _apply_shader(&this->shaderProgram);
+        glUniform1i(glGetUniformLocation(this->shaderProgram, "ourTexture"), 0);
+    }
+    void draw() override {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+    }
+    ~Cube3D() {
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteBuffers(1, &VBO);
+        glDeleteBuffers(1, &EBO);
+        if (shaderProgram) glDeleteProgram(shaderProgram);
+    }
+    GLuint getShaderProgram() const override { return shaderProgram; }
+};
+
+class Node : public Component
+{
+public:
+    std::map<std::string, std::shared_ptr<Component>> child_components;
+    std::map<std::string, std::shared_ptr<Node>> child_nodes;
+
+    void add_component(const std::string& name, std::shared_ptr<Component> component) {
+        child_components[name] = component;
+    }
+    void remove_component(const std::string& name) {
+        child_components.erase(name);
+    }
+    std::shared_ptr<Component> get_component(const std::string& name) {
+        auto it = child_components.find(name);
+        if (it != child_components.end()) return it->second;
+        return nullptr;
+    }
+    void add_node(const std::string& name, std::shared_ptr<Node> node) {
+        child_nodes[name] = node;
+    }
+    void remove_node(const std::string& name) {
+        child_nodes.erase(name);
+    }
+    std::shared_ptr<Node> get_node(const std::string& name) {
+        auto it = child_nodes.find(name);
+        if (it != child_nodes.end()) return it->second;
+        return nullptr;
+    }
+    void draw() override {
+        for (auto& [name, comp] : child_components) {
+            if (comp) comp->draw();
+        }
+        for (auto& [name, node] : child_nodes) {
+            if (node) node->draw();
+        }
+    }
+    void setShader(const std::string& vertexPath, const std::string& fragmentPath) override {
+        for (auto& [name, comp] : child_components) {
+            if (comp) comp->setShader(vertexPath, fragmentPath);
+        }
+        for (auto& [name, node] : child_nodes) {
+            if (node) node->setShader(vertexPath, fragmentPath);
+        }
+    }
+    void apply_shader() override {
+        for (auto& [name, comp] : child_components) {
+            if (comp) comp->apply_shader();
+        }
+        for (auto& [name, node] : child_nodes) {
+            if (node) node->apply_shader();
+        }
+    }
+    GLuint getShaderProgram() const override {
+        if (!child_components.empty()) {
+            auto it = child_components.begin();
+            if (it->second) return it->second->getShaderProgram();
+        }
+        if (!child_nodes.empty()) {
+            auto it = child_nodes.begin();
+            if (it->second) return it->second->getShaderProgram();
+        }
+        return 0;
+    }
+
+    // Lua bindings
+    static int lua_create_node(lua_State* L);
+    static int lua_node_add_component(lua_State* L);
+    static int lua_node_add_node(lua_State* L);
+    static void register_node(lua_State* L);
+};
 

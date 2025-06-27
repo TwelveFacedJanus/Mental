@@ -22,6 +22,7 @@ set(EXECUTABLE
     ${SFD}/Components/Sprite2D.cpp
     ${SFD}/Components/Camera.cpp
     ${SFD}/Components/AnimatedSprite2D.cpp
+    ${SFD}/Components/Triangle.cpp
     ${SFD}/Ui.cpp
 )
 

@@ -1,4 +1,5 @@
 #include "Component.hpp"
+#include <memory>
 
 std::vector<Component*> g_lua_components;
 
@@ -8,6 +9,27 @@ std::string Component::loadShaderSource(const std::string& path) {
     buffer << file.rdbuf();
     return buffer.str();
 }
+
+void Component::init_buffers(const float* vertices, size_t vert_size, const unsigned int* indices, size_t ind_size, int pos_size, int tex_offset, int tex_size) {
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, vert_size, vertices, GL_STATIC_DRAW);
+        if (indices && ind_size > 0) {
+            glGenBuffers(1, &EBO);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, ind_size, indices, GL_STATIC_DRAW);
+        }
+        glVertexAttribPointer(0, pos_size, GL_FLOAT, GL_FALSE, (pos_size + tex_size) * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        if (tex_offset >= 0 && tex_size > 0) {
+            glVertexAttribPointer(1, tex_size, GL_FLOAT, GL_FALSE, (pos_size + tex_size) * sizeof(float), (void*)(tex_offset * sizeof(float)));
+            glEnableVertexAttribArray(1);
+        }
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
 
 void Component::rotate(float angle, const glm::vec3& axis) {
     rotation = glm::rotate(rotation, angle, axis);
@@ -158,7 +180,9 @@ int Component::lua_get_glfw_action(lua_State* L) {
 
 void Component::add_script(const std::string& path_to_script) {
     script_path = path_to_script;
-    last_script_write_time = std::filesystem::last_write_time(script_path);
+    if (!script_path.empty() && std::filesystem::exists(script_path)) {
+        last_script_write_time = std::filesystem::last_write_time(script_path);
+    }
     L = luaL_newstate();
     luaL_openlibs(L);
     register_sprite2d(L);
@@ -194,14 +218,16 @@ void Component::add_script(const std::string& path_to_script) {
     }
     // TODO: Add similar for Triangle/Camera if needed
 
-    if (luaL_dofile(L, script_path.c_str()) != LUA_OK) {
-        std::cerr << "Lua error: " << lua_tostring(L, -1) << std::endl;
-        lua_pop(L, 1);
+    if (!script_path.empty() && std::filesystem::exists(script_path)) {
+        if (luaL_dofile(L, script_path.c_str()) != LUA_OK) {
+            std::cerr << "Lua error: " << lua_tostring(L, -1) << std::endl;
+            lua_pop(L, 1);
+        }
     }
 }
 
 void Component::reload_script_if_changed() {
-    if (script_path.empty()) return;
+    if (script_path.empty() || !std::filesystem::exists(script_path)) return;
     auto current_write_time = std::filesystem::last_write_time(script_path);
     if (current_write_time != last_script_write_time) {
         if (L) lua_close(L);
@@ -426,4 +452,114 @@ int Component::lua_create_triangle(lua_State* L) {
     luaL_getmetatable(L, "TriangleMeta");
     lua_setmetatable(L, -2);
     return 1;
+}
+
+
+int Component::lua_camera_set_position(lua_State* L) {
+    Camera* cam = *(Camera**)luaL_checkudata(L, 1, "CameraMeta");
+    float x = luaL_checknumber(L, 2);
+    float y = luaL_checknumber(L, 3);
+    float z = luaL_optnumber(L, 4, 0.0f);
+    cam->set_position(x, y, z);
+    return 0;
+}
+int Component::lua_camera_look_at(lua_State* L) {
+    Camera* cam = *(Camera**)luaL_checkudata(L, 1, "CameraMeta");
+    float x = luaL_checknumber(L, 2);
+    float y = luaL_checknumber(L, 3);
+    float z = luaL_optnumber(L, 4, 0.0f);
+    cam->look_at(x, y, z);
+    return 0;
+}
+int Component::lua_camera_set_perspective(lua_State* L) {
+    Camera* cam = *(Camera**)luaL_checkudata(L, 1, "CameraMeta");
+    float fov = luaL_checknumber(L, 2);
+    float aspect = luaL_checknumber(L, 3);
+    float nearP = luaL_checknumber(L, 4);
+    float farP = luaL_checknumber(L, 5);
+    cam->set_perspective(fov, aspect, nearP, farP);
+    return 0;
+}
+int Component::lua_create_camera(lua_State* L) {
+    Camera* cam = new Camera();
+    *(Camera**)lua_newuserdata(L, sizeof(Camera*)) = cam;
+    luaL_getmetatable(L, "CameraMeta");
+    lua_setmetatable(L, -2);
+    return 1;
+}
+void Component::register_camera(lua_State* L) {
+    luaL_newmetatable(L, "CameraMeta");
+    lua_pushcfunction(L, lua_camera_set_position);
+    lua_setfield(L, -2, "set_position");
+    lua_pushcfunction(L, lua_camera_look_at);
+    lua_setfield(L, -2, "look_at");
+    lua_pushcfunction(L, lua_camera_set_perspective);
+    lua_setfield(L, -2, "set_perspective");
+    lua_pop(L, 1);
+    lua_pushcfunction(L, lua_create_camera);
+    lua_setglobal(L, "create_camera");
+}
+
+// --- Node Lua Bindings ---
+int Node::lua_create_node(lua_State* L) {
+    Node* node = new Node();
+    *(Node**)lua_newuserdata(L, sizeof(Node*)) = node;
+    luaL_getmetatable(L, "NodeMeta");
+    lua_setmetatable(L, -2);
+    return 1;
+}
+
+int Node::lua_node_add_component(lua_State* L) {
+    Node* node = *(Node**)luaL_checkudata(L, 1, "NodeMeta");
+    const char* name = luaL_checkstring(L, 2);
+    // Поддержка всех известных компонент
+    if (luaL_testudata(L, 3, "Sprite2DMeta")) {
+        Sprite2D* comp = *(Sprite2D**)luaL_checkudata(L, 3, "Sprite2DMeta");
+        node->add_component(name, std::shared_ptr<Component>(comp, [](Component*){}));
+    } else if (luaL_testudata(L, 3, "TriangleMeta")) {
+        Triangle* comp = *(Triangle**)luaL_checkudata(L, 3, "TriangleMeta");
+        node->add_component(name, std::shared_ptr<Component>(comp, [](Component*){}));
+    } else if (luaL_testudata(L, 3, "RectMeta")) {
+        Rect* comp = *(Rect**)luaL_checkudata(L, 3, "RectMeta");
+        node->add_component(name, std::shared_ptr<Component>(comp, [](Component*){}));
+    } else if (luaL_testudata(L, 3, "CameraMeta")) {
+        Camera* comp = *(Camera**)luaL_checkudata(L, 3, "CameraMeta");
+        node->add_component(name, std::shared_ptr<Component>(comp, [](Component*){}));
+    } else if (luaL_testudata(L, 3, "AnimatedSprite2DMeta")) {
+        AnimatedSprite2D* comp = *(AnimatedSprite2D**)luaL_checkudata(L, 3, "AnimatedSprite2DMeta");
+        node->add_component(name, std::shared_ptr<Component>(comp, [](Component*){}));
+    } else if (luaL_testudata(L, 3, "TileMapMeta")) {
+        TileMap* comp = *(TileMap**)luaL_checkudata(L, 3, "TileMapMeta");
+        node->add_component(name, std::shared_ptr<Component>(comp, [](Component*){}));
+    } else if (luaL_testudata(L, 3, "Cube3DMeta")) {
+        Cube3D* comp = *(Cube3D**)luaL_checkudata(L, 3, "Cube3DMeta");
+        node->add_component(name, std::shared_ptr<Component>(comp, [](Component*){}));
+    } else if (luaL_testudata(L, 3, "NodeMeta")) {
+        Node* comp = *(Node**)luaL_checkudata(L, 3, "NodeMeta");
+        node->add_component(name, std::shared_ptr<Component>(comp, [](Component*){}));
+    } else {
+        return luaL_error(L, "Unsupported component type for add_component");
+    }
+    return 0;
+}
+
+int Node::lua_node_add_node(lua_State* L) {
+    Node* node = *(Node**)luaL_checkudata(L, 1, "NodeMeta");
+    const char* name = luaL_checkstring(L, 2);
+    Node* child = *(Node**)luaL_checkudata(L, 3, "NodeMeta");
+    node->add_node(name, std::shared_ptr<Node>(child, [](Node*){}));
+    return 0;
+}
+
+void Node::register_node(lua_State* L) {
+    luaL_newmetatable(L, "NodeMeta");
+    lua_newtable(L);
+    lua_pushcfunction(L, lua_node_add_component);
+    lua_setfield(L, -2, "add_component");
+    lua_pushcfunction(L, lua_node_add_node);
+    lua_setfield(L, -2, "add_node");
+    lua_setfield(L, -2, "__index");
+    lua_pop(L, 1);
+    lua_pushcfunction(L, lua_create_node);
+    lua_setglobal(L, "create_node");
 }

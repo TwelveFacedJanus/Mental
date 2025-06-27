@@ -36,4 +36,5 @@ class MentalWindow : public UI
         void addSprite2D(Sprite2D* sprite, float x, float y, float z, const std::string& script_path, const glm::mat4& default_view, const glm::mat4& default_projection, float delta);
         void addTriangle(Triangle* tr, const glm::mat4& default_view, const glm::mat4& default_projection, float delta);
         ~MentalWindow();
+        void remove_component_from_pipeline(Component* comp);
 };

@@ -1,46 +1,38 @@
 #include "Component.hpp"
 
-int Component::lua_camera_set_position(lua_State* L) {
-    Camera* cam = *(Camera**)luaL_checkudata(L, 1, "CameraMeta");
-    float x = luaL_checknumber(L, 2);
-    float y = luaL_checknumber(L, 3);
-    float z = luaL_optnumber(L, 4, 0.0f);
-    cam->set_position(x, y, z);
-    return 0;
+
+Camera::Camera( glm::vec3 pos, glm::vec3 tgt, glm::vec3 upv, float fov_, float aspect_, float near_, float far_)
+: position(pos), target(tgt), up(upv), fov(fov_), aspect(aspect_), nearPlane(near_), farPlane(far_) {
+    interp_position = pos;
+    interp_target = tgt;
+    update_matrices();
 }
-int Component::lua_camera_look_at(lua_State* L) {
-    Camera* cam = *(Camera**)luaL_checkudata(L, 1, "CameraMeta");
-    float x = luaL_checknumber(L, 2);
-    float y = luaL_checknumber(L, 3);
-    float z = luaL_optnumber(L, 4, 0.0f);
-    cam->look_at(x, y, z);
-    return 0;
+
+void Camera::set_position(float x, float y, float z) {
+    position = glm::vec3(x, y, z);
+    update_matrices();
 }
-int Component::lua_camera_set_perspective(lua_State* L) {
-    Camera* cam = *(Camera**)luaL_checkudata(L, 1, "CameraMeta");
-    float fov = luaL_checknumber(L, 2);
-    float aspect = luaL_checknumber(L, 3);
-    float nearP = luaL_checknumber(L, 4);
-    float farP = luaL_checknumber(L, 5);
-    cam->set_perspective(fov, aspect, nearP, farP);
-    return 0;
+void Camera::look_at(float x, float y, float z) {
+    target = glm::vec3(x, y, z);
+    update_matrices();
 }
-int Component::lua_create_camera(lua_State* L) {
-    Camera* cam = new Camera();
-    *(Camera**)lua_newuserdata(L, sizeof(Camera*)) = cam;
-    luaL_getmetatable(L, "CameraMeta");
-    lua_setmetatable(L, -2);
-    return 1;
+void Camera::set_perspective(float fov_, float aspect_, float near_, float far_) {
+    fov = fov_; aspect = aspect_; nearPlane = near_; farPlane = far_;
+    update_matrices();
 }
-void Component::register_camera(lua_State* L) {
-    luaL_newmetatable(L, "CameraMeta");
-    lua_pushcfunction(L, lua_camera_set_position);
-    lua_setfield(L, -2, "set_position");
-    lua_pushcfunction(L, lua_camera_look_at);
-    lua_setfield(L, -2, "look_at");
-    lua_pushcfunction(L, lua_camera_set_perspective);
-    lua_setfield(L, -2, "set_perspective");
-    lua_pop(L, 1);
-    lua_pushcfunction(L, lua_create_camera);
-    lua_setglobal(L, "create_camera");
+void Camera::update_matrices() {
+    view = glm::lookAt(position, target, up);
+    projection = glm::perspective(glm::radians(fov), aspect, nearPlane, farPlane);
 }
+void Camera::update_interpolated(float alpha, const glm::vec3& new_pos, const glm::vec3& new_target) {
+    interp_position = glm::mix(interp_position, new_pos, alpha);
+    interp_target = glm::mix(interp_target, new_target, alpha);
+    view = glm::lookAt(interp_position, interp_target, up);
+    projection = glm::perspective(glm::radians(fov), aspect, nearPlane, farPlane);
+}
+glm::vec3 Camera::getInterpPosition() const { return interp_position; }
+glm::vec3 Camera::getInterpTarget() const { return interp_target; }
+glm::mat4 Camera::getView() const { return view; }
+glm::mat4 Camera::getProjection() const { return projection; }
+GLuint Camera::getShaderProgram() const { return 0; }
+
