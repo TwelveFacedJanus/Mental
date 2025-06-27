@@ -30,8 +30,23 @@ set(EXECUTABLE
 # GLFW
 set(GLFW_DIR "External/glfw")
 set(GLFW_INCLUDE_DIR "${GLFW_DIR}/include")
-set(GLFW_LIBRARY glfw3)
-link_directories(${GLFW_DIR}/lib-vc2022)
+if(WIN32)
+    set(GLFW_LIBRARY glfw3)
+    link_directories(${GLFW_DIR}/lib-vc2022)
+elseif(APPLE)
+    set(GLFW_LIBRARY glfw)
+    # Check for Homebrew (Apple Silicon and Intel)
+    if(EXISTS /opt/homebrew/lib/libglfw.3.dylib)
+        include_directories(/opt/homebrew/include)
+        link_directories(/opt/homebrew/lib)
+    elseif(EXISTS /usr/local/lib/libglfw.3.dylib)
+        include_directories(/usr/local/include)
+        link_directories(/usr/local/lib)
+    endif()
+    # If you want to use a local build, uncomment the next line and provide the library in lib-macos
+    # link_directories(${GLFW_DIR}/lib-macos)
+    # Otherwise, Homebrew's glfw will be found automatically by the linker
+endif()
 
 # GLEW
 set(GLEW_DIR "External/glew")
@@ -40,6 +55,16 @@ if(WIN32)
     set(GLEW_LIBRARY glew32s)
     link_directories(${GLEW_DIR}/lib/Release/x64)
     add_definitions(-DGLEW_STATIC)
+elseif(APPLE)
+    set(GLEW_LIBRARY GLEW)
+    # Check for Homebrew (Apple Silicon and Intel)
+    if(EXISTS /opt/homebrew/lib/libGLEW.dylib)
+        include_directories(/opt/homebrew/include)
+        link_directories(/opt/homebrew/lib)
+    elseif(EXISTS /usr/local/lib/libGLEW.dylib)
+        include_directories(/usr/local/include)
+        link_directories(/usr/local/lib)
+    endif()
 else()
     set(GLEW_LIBRARY "${GLEW_DIR}/lib/libGLEW.so")
 endif()
@@ -48,14 +73,24 @@ endif()
 set(GLM_DIR "External/glm")
 set(GLM_INCLUDE_DIR "${GLM_DIR}")
 
-# Lua (corrected based on your structure)
+# Lua
 set(LUA_DIR "External/lua")
 set(LUA_INCLUDE_DIR "${LUA_DIR}/lua/include") # Where lua/lua.h is located
 if(WIN32)
     set(LUA_LIBRARY lua54)
     link_directories(${LUA_DIR}/lib)
+elseif(APPLE)
+    set(LUA_LIBRARY lua)
+    # Check for Homebrew (Apple Silicon and Intel)
+    if(EXISTS /opt/homebrew/lib/liblua.dylib)
+        include_directories(/opt/homebrew/include)
+        link_directories(/opt/homebrew/lib)
+    elseif(EXISTS /usr/local/lib/liblua.dylib)
+        include_directories(/usr/local/include)
+        link_directories(/usr/local/lib)
+    endif()
 else()
-    set(LUA_LIBRARY "${LUA_DIR}/lib/liblua.a") # Unix static lib
+    set(LUA_LIBRARY \"${LUA_DIR}/lib/liblua.a\")
 endif()
 
 # ImGui
@@ -74,6 +109,10 @@ set(TEXTEDITOR_SOURCES ${TEXTEDITOR_DIR}/TextEditor.cpp)
 if(WIN32)
     set(NFD_DIR "External/nativefiledialog/src")
     set(NFD_SOURCES ${NFD_DIR}/nfd_win.cpp ${NFD_DIR}/nfd_common.c)
+elseif(APPLE)
+    enable_language(OBJC)
+    set(NFD_DIR "External/nativefiledialog/src")
+    set(NFD_SOURCES ${NFD_DIR}/nfd_cocoa.m ${NFD_DIR}/nfd_common.c)
 endif()
 
 # ==================== Include Directories ====================
@@ -105,6 +144,16 @@ if(WIN32)
         opengl32.lib
         gdi32.lib
     )
+elseif(APPLE)
+    target_link_libraries(${PROJECT_NAME}
+        ${GLFW_LIBRARY}
+        ${GLEW_LIBRARY}
+        ${LUA_LIBRARY}
+        "-framework OpenGL"
+        "-framework Cocoa"
+        "-framework IOKit"
+        "-framework CoreVideo"
+    )
 else()
     target_link_libraries(${PROJECT_NAME}
         ${GLFW_LIBRARY}
@@ -113,6 +162,11 @@ else()
         GL
         dl
     )
+endif()
+
+# Ensure nfd_cocoa.m is compiled as Objective-C on macOS
+if(APPLE)
+    set_source_files_properties(${NFD_DIR}/nfd_cocoa.m PROPERTIES LANGUAGE OBJC)
 endif()
 
 # ==================== Post-Build (Windows DLLs) ====================
@@ -124,45 +178,53 @@ if(WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_SOURCE_DIR}/imgui.ini"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>
-
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_SOURCE_DIR}/External/lua/lib/lua54.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>
-
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_SOURCE_DIR}/Fonts"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>/Fonts
-
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_SOURCE_DIR}/Scripts"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>/Scripts
-
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_SOURCE_DIR}/Shaders"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>/Shaders
-
         COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_SOURCE_DIR}/Textures"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>/Textures
-
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "C:/Windows/System32/vcruntime140.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>
-
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "C:/Windows/System32/msvcp140d.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>
-
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "C:/Windows/System32/vcruntime140d.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>
-
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "C:/Windows/System32/vcruntime140_1d.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>
-
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "C:/Windows/System32/ucrtbased.dll"
         $<TARGET_FILE_DIR:${PROJECT_NAME}>
+    )
+elseif(APPLE)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/imgui.ini"
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/Fonts"
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>/Fonts
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/Scripts"
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>/Scripts
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/Shaders"
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>/Shaders
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/Textures"
+        $<TARGET_FILE_DIR:${PROJECT_NAME}>/Textures
     )
 endif()

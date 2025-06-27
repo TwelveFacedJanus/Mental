@@ -2,7 +2,14 @@
 #include "Ui.hpp"
 #include "Component.hpp"
 #include <filesystem>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include "../External/nativefiledialog/src/include/nfd.h"
+#ifdef __cplusplus
+}
+#endif
 
 void UI::set_custom_imgui_style() {
     ImGuiStyle& style = ImGui::GetStyle();
