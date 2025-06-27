@@ -2,3 +2,6 @@
 	path = External/imgui
 	url = https://github.com/ocornut/imgui
 	branch = docking
+[submodule "External/nativefiledialog"]
+	path = External/nativefiledialog
+	url = https://github.com/mlabbe/nativefiledialog.git
