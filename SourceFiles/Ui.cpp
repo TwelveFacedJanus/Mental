@@ -51,8 +51,10 @@ void UI::initialize_imgui(GLFWwindow* window) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.IniFilename = "../imgui.ini";
-    io.Fonts->AddFontFromFileTTF("../Fonts/SFProText-Medium.ttf", 14.0f);
+    std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
+    io.IniFilename = "./imgui.ini";
+    
+    io.Fonts->AddFontFromFileTTF("./Fonts/SFProText-Medium.ttf", 14.0f);
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;

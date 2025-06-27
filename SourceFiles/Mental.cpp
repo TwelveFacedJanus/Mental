@@ -80,7 +80,7 @@ void MentalWindow::load_root_script() {
     Component::register_sprite2d(rootL);
     Component::register_triangle(rootL);
     Component::register_camera(rootL);
-    if (luaL_dofile(rootL, "../Scripts/root.lua") != LUA_OK) {
+    if (luaL_dofile(rootL, "./Scripts/root.lua") != LUA_OK) {
         std::cerr << "Lua error: " << lua_tostring(rootL, -1) << std::endl;
         lua_pop(rootL, 1);
     } else {
@@ -168,11 +168,11 @@ void MentalWindow::main_loop() {
 
     // ===== BACKGROUND ======
     Sprite2D bg;
-    addSprite2D(&bg, 0.0f, 0.0f, 0.0f, "../Scripts/background_component.lua", default_view, default_projection, delta);
+    addSprite2D(&bg, 0.0f, 0.0f, 0.0f, "./Scripts/background_component.lua", default_view, default_projection, delta);
 
     // ===== PLAYER =====
     Sprite2D sprite;
-    addSprite2D(&sprite, 0.5f, 0.0f, 0.0f, "../Scripts/sprite_component.lua", default_view, default_projection, delta);
+    addSprite2D(&sprite, 0.5f, 0.0f, 0.0f, "./Scripts/sprite_component.lua", default_view, default_projection, delta);
 
     UI ui;
 

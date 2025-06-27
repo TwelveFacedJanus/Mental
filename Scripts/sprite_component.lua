@@ -15,7 +15,7 @@ local timer = 0
 local current_frame = 1
 
 function main()
-    self:apply_texture("../Textures/Characters/Kiselek/tile000.png")
+    self:apply_texture("./Textures/Characters/Kiselek/tile000.png")
     self:set_scale(3.0, 2.0, 1.0)
 end
 

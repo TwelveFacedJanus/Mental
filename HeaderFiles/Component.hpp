@@ -13,9 +13,9 @@
 #include <set>
 #include <map>
 extern "C" {
-#include <lua/lua.h>
-#include <lua/lauxlib.h>
-#include <lua/lualib.h>
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
 }
 
 
@@ -142,7 +142,7 @@ public:
         _apply_shader(&this->shaderProgram);
         glUniform1i(glGetUniformLocation(this->shaderProgram, "ourTexture"), 0);
     }
-    void setShader(const std::string& vertexPath = "../Shaders/triangle.vert", const std::string& fragmentPath = "../Shaders/triangle.frag") override {
+    void setShader(const std::string& vertexPath = "./Shaders/triangle.vert", const std::string& fragmentPath = "./Shaders/triangle.frag") override {
         _set_shader(vertexPath, fragmentPath, &this->shaderProgram);
     }
     void draw() override {
@@ -177,7 +177,7 @@ public:
     Rect() {
         init_buffers(vertices, sizeof(vertices), indices, sizeof(indices), 3);
     }
-    void setShader(const std::string& vertexPath = "../Shaders/rectangle.vert", const std::string& fragmentPath = "../Shaders/rectangle.frag") override {
+    void setShader(const std::string& vertexPath = "./Shaders/rectangle.vert", const std::string& fragmentPath = "./Shaders/rectangle.frag") override {
         _set_shader(vertexPath, fragmentPath, &this->shaderProgram);
     }
     void draw() override {
@@ -210,7 +210,7 @@ public:
     std::vector<GLuint> textureIDs;
     int current_texture_index = 0;
     Sprite2D();
-    void setShader(const std::string& vertexPath = "../Shaders/triangle.vert", const std::string& fragmentPath = "../Shaders/triangle.frag") override;
+    void setShader(const std::string& vertexPath = "./Shaders/triangle.vert", const std::string& fragmentPath = "./Shaders/triangle.frag") override;
     void draw() override;
     ~Sprite2D();
     GLuint getShaderProgram() const override;
@@ -393,7 +393,7 @@ public:
         glBindVertexArray(0);
         glUseProgram(0);
     }
-    void setShader(const std::string& vertexPath = "../Shaders/triangle.vert", const std::string& fragmentPath = "../Shaders/triangle.frag") override {
+    void setShader(const std::string& vertexPath = "./Shaders/triangle.vert", const std::string& fragmentPath = "./Shaders/triangle.frag") override {
         _set_shader(vertexPath, fragmentPath, &shaderProgram);
         // quad (2 triangles)
         float quad_vertices[20] = {

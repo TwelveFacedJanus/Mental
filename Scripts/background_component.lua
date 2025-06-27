@@ -5,7 +5,7 @@ local current_frame = 1
 
 function main()
     for i = 0, frame_count - 1 do
-        self:add_texture(string.format("../Textures/forest/%d_forest.png", i))
+        self:add_texture(string.format("./Textures/forest/%d_forest.png", i))
     end
     self:set_position(0.0, 0.0, 0.0)
     self:set_scale(4.0, 4.0, 4.0)
