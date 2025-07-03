@@ -2,6 +2,22 @@
 #include <functional>
 #include <algorithm>
 #include "Component.hpp"
+#include "Mental.hpp"
+
+typedef struct MentalRenderPipeline {
+    std::vector<std::pair<MentalComponent*, std::function<void()>>> pipeline;
+} MentalRenderPipeline;
+
+MentalResult mentalRenderPipelineInitialize(MentalRenderPipeline* pipeline) {
+    if (pipeline == nullptr) return MENTAL_ERROR;
+    pipeline->pipeline.clear();
+    return MENTAL_OK;
+}
+MentalResult mentalRenderPipelineAdd(MentalRenderPipeline* pipeline, MentalComponent* component, const std::function<void()>& func) {
+    if (pipeline == nullptr || component == nullptr) return MENTAL_ERROR;
+    pipeline->pipeline.emplace_back(component, func);
+    return MENTAL_OK;
+}
 
 class RenderPipeline {
     std::vector<std::pair<Component*, std::function<void()>>> pipeline;

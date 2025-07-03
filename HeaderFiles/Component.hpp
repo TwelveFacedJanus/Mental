@@ -20,7 +20,33 @@ extern "C" {
 }
 
 #include "stb_image.h"
+#include "Mental.hpp"
 
+typedef struct MentalComponentInfo {
+    MentalComponentTypes cType = MENTAL_COMPONENT_TRIANGLE;
+} MentalComponentInfo;
+
+typedef struct MentalComponent {
+    MentalComponentInfo info;
+    lua_State* L = nullptr;
+    std::filesystem::file_time_type last_script_write_time;
+    GLuint textureID = 0;
+    glm::mat4 model = glm::mat4(1.0f);
+    glm::vec3 position = glm::vec3(0.0f);
+    glm::vec3 scale = glm::vec3(1.0f);
+    glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f); // или glm::vec3 для углов
+    std::string script_path;
+    std::string texture_path;
+    GLuint shaderProgram = 0;
+    GLuint VBO, VAO, EBO;
+    bool flipped_h = false;
+    static std::set<int> g_pressed_keys;
+    static std::map<int, std::string> g_key_names;
+} MentalComponent;
+
+MentalResult mentalComponentCreate(MentalComponentInfo* info, MentalComponent* component);
+
+void _mentalCreateTriangle(MentalComponent* component);
 
 class Component {
 private:

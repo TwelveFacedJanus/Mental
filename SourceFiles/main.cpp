@@ -3,7 +3,8 @@
 
 int main()
 {
-    MentalWindow mw = MentalWindow();
-    mw.main_loop();
+    MentalEngineCore mec;
+    mentalEngineInitialize(&mec);
+    mentalEngineMainLoop(&mec);
     return 0;
 }
