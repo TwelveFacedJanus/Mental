@@ -1,6 +1,6 @@
 #include "mental_vk_support.h"
 
-const char* validationLayers[] = { "VK_LAYER_KHRONOS_validation" };
+const char* validationLayers[] = {"VK_LAYER_KHRONOS_validation"};
 const unsigned int validationLayerCount = sizeof(validationLayers) / sizeof(validationLayers[0]);
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -8,9 +8,7 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
-
-bool checkValidationLayerSupport()
-{
+bool checkValidationLayerSupport() {
     fprintf(stderr, "[DEBUG] checkValidationLayerSupport()\n");
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, NULL);
@@ -42,23 +40,19 @@ bool checkValidationLayerSupport()
     return true;
 }
 
-void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT* createInfo)
-{
+void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT* createInfo) {
     fprintf(stderr, "[DEBUG] populateDebugMessengerCreateInfo()\n");
     createInfo->sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     createInfo->messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    createInfo->messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                              VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                  VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    createInfo->messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                               VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     createInfo->pfnUserCallback = debugCallback;
     createInfo->pUserData = NULL;
     createInfo->flags = 0;
 }
 
-void setupDebugMessenger(MentalVK* mvk)
-{
+void setupDebugMessenger(MentalVK* mvk) {
     fprintf(stderr, "[DEBUG] setupDebugMessenger()\n");
     if (!enableValidationLayers) {
         fprintf(stderr, "[DEBUG] Validation layers disabled, skipping debug messenger setup\n");
@@ -68,8 +62,8 @@ void setupDebugMessenger(MentalVK* mvk)
     VkDebugUtilsMessengerCreateInfoEXT createInfo;
     populateDebugMessengerCreateInfo(&createInfo);
 
-    PFN_vkCreateDebugUtilsMessengerEXT func = (PFN_vkCreateDebugUtilsMessengerEXT)
-        vkGetInstanceProcAddr(mvk->instance, "vkCreateDebugUtilsMessengerEXT");
+    PFN_vkCreateDebugUtilsMessengerEXT func =
+        (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(mvk->instance, "vkCreateDebugUtilsMessengerEXT");
     if (func != NULL) {
         VkResult res = func(mvk->instance, &createInfo, NULL, &mvk->debugMessenger);
         if (res != VK_SUCCESS) {
@@ -82,14 +76,11 @@ void setupDebugMessenger(MentalVK* mvk)
     }
 }
 
-void DestroyDebugUtilsMessengerEXT(
-    VkInstance instance,
-    VkDebugUtilsMessengerEXT messenger,
-    const VkAllocationCallbacks* pAllocator
-) {
+void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT messenger,
+                                   const VkAllocationCallbacks* pAllocator) {
     fprintf(stderr, "[DEBUG] DestroyDebugUtilsMessengerEXT()\n");
-    PFN_vkDestroyDebugUtilsMessengerEXT func = (PFN_vkDestroyDebugUtilsMessengerEXT)
-        vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    PFN_vkDestroyDebugUtilsMessengerEXT func =
+        (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
     if (func != NULL) {
         func(instance, messenger, pAllocator);
         fprintf(stderr, "[DEBUG] Debug messenger destroyed\n");

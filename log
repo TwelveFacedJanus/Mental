@@ -1,8 +1,0 @@
-engine/backends/mental_vk_support.c:11:1: warning: non-void function does not return a value in all control paths [-Wreturn-type]
-   11 | }
-      engine/backends/mental_vk_support.c:11:1: warning: non-void function does not return a value in all control paths [-Wreturn-type]
-   11 | }
-      | ^
-| ^
-1 warning generated.
-1 warning generated.

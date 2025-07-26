@@ -49,15 +49,13 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device, const char** deviceExt
 
 bool isDeviceSuitable(MentalVK* mvk, VkPhysicalDevice device) {
     QueueFamilyIndicies indices = findQueueFamilies(mvk, device);
-    
+
     // Define required extensions
-    const char* deviceExtensions[] = {
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    };
+    const char* deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     uint32_t deviceExtensionCount = sizeof(deviceExtensions) / sizeof(deviceExtensions[0]);
-    
+
     bool extensionsSupported = checkDeviceExtensionSupport(device, deviceExtensions, deviceExtensionCount);
-    
+
     // Check if swap chain is adequate if we need it
     bool swapChainAdequate = false;
     if (extensionsSupported) {
@@ -65,14 +63,11 @@ bool isDeviceSuitable(MentalVK* mvk, VkPhysicalDevice device) {
         // swapChainAdequate = querySwapChainSupport(device);
         swapChainAdequate = true; // Temporary for compilation
     }
-    
+
     VkPhysicalDeviceFeatures supportedFeatures;
     vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
-    
-    return indices.has_value && 
-           indices.present_has_value && 
-           extensionsSupported && 
-           swapChainAdequate &&
+
+    return indices.has_value && indices.present_has_value && extensionsSupported && swapChainAdequate &&
            supportedFeatures.samplerAnisotropy; // Example feature check
 }
 
@@ -83,13 +78,13 @@ void pickPhysicalDevice(MentalVK* mvk) {
         fprintf(stderr, "Failed to find GPUs with Vulkan support!\n");
         return;
     }
-    
+
     VkPhysicalDevice* devices = malloc(sizeof(VkPhysicalDevice) * deviceCount);
     if (!devices) {
         fprintf(stderr, "Failed to allocate memory for physical devices\n");
         return;
     }
-    
+
     vkEnumeratePhysicalDevices(mvk->instance, &deviceCount, devices);
 
     for (uint32_t i = 0; i < deviceCount; i++) {
@@ -98,14 +93,14 @@ void pickPhysicalDevice(MentalVK* mvk) {
             break;
         }
     }
-    
+
     free(devices);
-    
+
     if (mvk->physicalDevice == VK_NULL_HANDLE) {
         fprintf(stderr, "Failed to find a suitable GPU.\n");
         return;
     }
-    
+
     // Optional: Print selected device name
     VkPhysicalDeviceProperties deviceProperties;
     vkGetPhysicalDeviceProperties(mvk->physicalDevice, &deviceProperties);

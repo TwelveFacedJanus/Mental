@@ -5,20 +5,16 @@
 #include "windowmanager/wm.h"
 #include "backends/mental_vk_support.h"
 
-typedef struct MentalEngineInfo
-{
+typedef struct MentalEngineInfo {
     MentalStructureTypes sType;
     MentalWindowManagerInfo wmInfo;
-}
-MentalEngineInfo;
+} MentalEngineInfo;
 
-typedef struct MentalEngine
-{
+typedef struct MentalEngine {
     MentalStructureTypes sType;
     MentalWindowManager* wm;
-    MentalVK*            mvk;
-}
-MentalEngine;
+    MentalVK* mvk;
+} MentalEngine;
 
 MentalResult mentalEngineInitialize(MentalEngineInfo info, MentalEngine* engine);
 MentalResult mentalEngineRun(MentalEngine* engine);

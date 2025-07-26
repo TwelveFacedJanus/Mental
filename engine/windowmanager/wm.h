@@ -3,20 +3,16 @@
 
 #include "../../core/mental.h"
 
-typedef struct MentalWindowManagerInfo
-{
+typedef struct MentalWindowManagerInfo {
     MentalStructureTypes sType;
-    int                  initialSizes[2];
-    char*                windowTitle;
-}
-MentalWindowManagerInfo;
+    int initialSizes[2];
+    char* windowTitle;
+} MentalWindowManagerInfo;
 
-typedef struct MentalWindowManager
-{
+typedef struct MentalWindowManager {
     MentalStructureTypes sType;
     GLFWwindow* window;
-}
-MentalWindowManager;
+} MentalWindowManager;
 
 MentalResult mentalGLFWCreateWindow(MentalWindowManagerInfo info, MentalWindowManager* manager);
 MentalResult mentalGLFWSetWindowHints();

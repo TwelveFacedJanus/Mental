@@ -1,7 +1,6 @@
 #include "mental_vk_support.h"
 
-MentalResult mentalVKCreateInstance(MentalVK* mvk)
-{
+MentalResult mentalVKCreateInstance(MentalVK* mvk) {
     fprintf(stderr, "[DEBUG] mentalVKInitialize()\n");
     if (mvk == NULL) {
         fprintf(stderr, "Failed to initialize MentalVK. mvk is NULL.\n");
@@ -49,18 +48,16 @@ MentalResult mentalVKCreateInstance(MentalVK* mvk)
 
     createInfo.enabledExtensionCount = extensionCount;
     createInfo.ppEnabledExtensionNames = requiredExtensions;
-    
-    if (enableValidationLayers && !checkValidationLayerSupport())
-    {
+
+    if (enableValidationLayers && !checkValidationLayerSupport()) {
         fprintf(stderr, "Validation layers requested, but not available.\n");
         free(requiredExtensions);
         return MENTAL_FATAL;
     }
 
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = {};
-    
-    if (enableValidationLayers)
-    {
+
+    if (enableValidationLayers) {
         createInfo.enabledLayerCount = validationLayerCount;
         createInfo.ppEnabledLayerNames = validationLayers;
         populateDebugMessengerCreateInfo(&debugCreateInfo);
@@ -71,7 +68,7 @@ MentalResult mentalVKCreateInstance(MentalVK* mvk)
         createInfo.pNext = NULL;
         fprintf(stderr, "[DEBUG] Validation layers disabled\n");
     }
-    
+
     fprintf(stderr, "[DEBUG] Creating Vulkan instance...\n");
     VkResult result = vkCreateInstance(&createInfo, NULL, &mvk->instance);
     free(requiredExtensions);

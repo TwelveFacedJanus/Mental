@@ -3,9 +3,7 @@
 
 #include "engine/engine.h"
 
-
-int main(int argc, const char* argv[])
-{
+int main(int argc, const char* argv[]) {
     MentalWindowManagerInfo mwmInfo = {
         .sType = MENTAL_STRUCTURE_TYPE_WINDOW_INFO,
         .windowTitle = "Mental Engine.",
@@ -16,12 +14,11 @@ int main(int argc, const char* argv[])
         .wmInfo = mwmInfo,
     };
     MentalEngine engine = {};
-    if (mentalEngineInitialize(engineInfo, &engine) != MENTAL_OK)
-    {
+    if (mentalEngineInitialize(engineInfo, &engine) != MENTAL_OK) {
         return MENTAL_FATAL;
     }
     mentalEngineRun(&engine);
     mentalEngineDestroy(&engine);
-    
+
     return 0;
 }

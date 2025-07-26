@@ -1,7 +1,18 @@
 ---
-# Use defaults from the Google style with the following exceptions:
 BasedOnStyle: Google
 IndentWidth: 4
 ColumnLimit: 132
 SortIncludes: false
-...
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignTrailingComments: true
+AllowShortBlocksOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Attach
+BreakBeforeTernaryOperators: true
+PointerAlignment: Left
+SpaceBeforeAssignmentOperators: true
+SpacesBeforeTrailingComments: 1
+UseTab: Never
