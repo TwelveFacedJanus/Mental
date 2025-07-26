@@ -22,6 +22,8 @@ typedef struct MentalVK {
 
     VkQueue graphicsQueue;
     VkQueue presentQueue;
+
+    VkSwapchainKHR swapChain;
 } MentalVK;
 
 typedef struct QueueFamilyIndicies {

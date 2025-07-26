@@ -25,7 +25,8 @@ SOURCES = \
 	$(BACKENDS_DIR)/mental_vk_queue_families.c \
 	$(BACKENDS_DIR)/mental_vk_physical_device.c \
 	$(BACKENDS_DIR)/mental_vk_logical_device.c \
-	$(BACKENDS_DIR)/mental_vk_surface.c
+	$(BACKENDS_DIR)/mental_vk_surface.c \
+	$(BACKENDS_DIR)/mental_vk_swapchain
 
 # Object files
 OBJECTS = $(SOURCES:.c=.o)
