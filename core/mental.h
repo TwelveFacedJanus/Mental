@@ -1,27 +1,12 @@
-#ifndef MENTAL_CORE_HPP
-#define MENTAL_CORE_HPP
+#ifndef mental_h
+#define mental_h
 
-typedef enum MentalResult {
-    MENTAL_OK = 0,
-    MENTAL_ERROR = 1,
-    MENTAL_FATAL = -1,
-} MentalResult;
+#include <stdio.h>
+#include <stdlib.h>
 
-typedef enum MentalStructureTypes {
-    MENTAL_STRUCTURE_TYPE_APPLICATION_INFO = 0,
-    MENTAL_STRUCTURE_TYPE_APPLICATION = 1,
+#include "types.h"
+#include "mathematica.h"
 
-    MENTAL_STRUCTURE_TYPE_WINDOW_INFO = 2,
-    MENTAL_STRUCTURE_TYPE_WINDOW = 3,
 
-    MENTAL_STRUCTURE_TYPE_OBJECT_INFO = 4,
-    MENTAL_STRUCTURE_TYPE_OBJECT = 5,
 
-    MENTAL_STRUCTURE_TYPE_ENGINE_INFO = 6,
-    MENTAL_STRUCTURE_TYPE_ENGINE = 7,
-} MentalStructureTypes;
-
-#include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
-
-#endif // MENTAL_CORE_HPP
+#endif // mental_h

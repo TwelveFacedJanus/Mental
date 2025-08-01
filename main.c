@@ -1,24 +1,33 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include "mental.h"
+#include "wm.h"
+#include "engine.h"
+#include "project.h"
 
-#include "engine/engine.h"
-
-int main(int argc, const char* argv[]) {
-    MentalWindowManagerInfo mwmInfo = {
-        .sType = MENTAL_STRUCTURE_TYPE_WINDOW_INFO,
-        .windowTitle = "Mental Engine.",
-        .initialSizes = {800, 600},
-    };
-    MentalEngineInfo engineInfo = {
+int main(int argc, const char* argv[])
+{
+    MentalEngineInfo mei = {
         .sType = MENTAL_STRUCTURE_TYPE_ENGINE_INFO,
-        .wmInfo = mwmInfo,
     };
-    MentalEngine engine = {};
-    if (mentalEngineInitialize(engineInfo, &engine) != MENTAL_OK) {
-        return MENTAL_FATAL;
-    }
-    mentalEngineRun(&engine);
-    mentalEngineDestroy(&engine);
 
-    return 0;
+    MentalWindowManagerInfo mwmi = {
+        .sType = MENTAL_STRUCTURE_TYPE_WM_INFO,
+        .pWindowTitle = "MentalEngine",
+        .windowSize = {800, 600},
+    };
+
+    MentalProjectInfo mpi = {
+        .sType = MENTAL_STRUCTURE_TYPE_PROJECT_INFO,
+        .pProjectName = "Mental",
+        .projectVersion = 100,
+        .pEngineInfo = &mei,
+        .pWindowInfo = &mwmi,
+    };
+
+    MentalProject project = {
+        .sType = MENTAL_STRUCTURE_TYPE_PROJECT,
+    };
+
+    mentalCreateProject(&mpi, &project);
+    mentalRunProject(&project);
+    mentalDestroyProject(&project);
 }

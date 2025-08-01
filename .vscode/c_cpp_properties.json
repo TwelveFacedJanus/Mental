@@ -2,7 +2,14 @@
   "configurations": [
     {
       "name": "Mac",
-      "includePath": ["${workspaceFolder}/**", "/opt/homebrew/include"],
+      "includePath": [
+        "${workspaceFolder}/**",
+        "/opt/homebrew/include",
+        "core/**",
+        "engine/**",
+        "engine/wm/**",
+        "engine/project/**"
+      ],
       "defines": [],
       "macFrameworkPath": [
         "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks"
